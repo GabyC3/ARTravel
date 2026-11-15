@@ -1,6 +1,6 @@
 using ARTravel.API.Contracts;
-using ARTravel.Application.Identity.Abstractions;
-using ARTravel.Application.Identity.Contracts;
+using ARTravel.Application.Interfaces.Identity;
+using ARTravel.Application.DTOs.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,11 +12,13 @@ namespace ARTravel.API.Controllers;
 public sealed class RolesController(IRoleManagementService roleManagementService) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<RoleSummary>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<RoleSummary>>> List(
-        CancellationToken cancellationToken)
+    [ProducesResponseType<PagedRoles>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedRoles>> List(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
     {
-        return Ok(await roleManagementService.ListAsync(cancellationToken));
+        return Ok(await roleManagementService.ListAsync(page, pageSize, cancellationToken));
     }
 
     [HttpGet("{roleId:int}")]

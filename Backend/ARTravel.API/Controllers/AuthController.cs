@@ -2,8 +2,8 @@ using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using ARTravel.API.Contracts;
-using ARTravel.Application.Identity.Abstractions;
-using ARTravel.Application.Identity.Contracts;
+using ARTravel.Application.Interfaces.Identity;
+using ARTravel.Application.DTOs.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

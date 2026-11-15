@@ -1,17 +1,32 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using ARTravel.API.Configuration;
 using ARTravel.API.Middleware;
-using ARTravel.Application.Identity.Abstractions;
-using ARTravel.Application.Identity.Contracts;
-using ARTravel.Application.Identity.Services;
+using ARTravel.Application.Interfaces.Identity;
+using ARTravel.Application.DTOs.Identity;
+using ARTravel.Application.UseCases.Identity;
+using ARTravel.Application.Interfaces.Contacts;
+using ARTravel.Application.UseCases.Contacts;
+using ARTravel.Application.Interfaces.Destinations;
+using ARTravel.Application.UseCases.Destinations;
+using ARTravel.Application.Interfaces.Products;
+using ARTravel.Application.UseCases.Products;
+using ARTravel.Application.Interfaces.Itineraries;
+using ARTravel.Application.UseCases.Itineraries;
+using ARTravel.Application.Interfaces.Departures;
+using ARTravel.Application.UseCases.Departures;
+using ARTravel.Application.Interfaces.Reservations;
+using ARTravel.Application.UseCases.Reservations;
 using ARTravel.Infrastructure;
 using ARTravel.Infrastructure.Data;
-using ARTravel.Infrastructure.Security;
+using ARTravel.Infrastructure.Services.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+
+DotEnvLoader.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +34,12 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
+builder.Services.AddScoped<IContactService, ContactService>();
+builder.Services.AddScoped<IDestinationService, DestinationService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IItineraryService, ItineraryService>();
+builder.Services.AddScoped<IDepartureService, DepartureService>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddControllers();
 
 var jwtSettings = JwtSettings.FromConfiguration(builder.Configuration);
@@ -65,35 +86,17 @@ builder.Services
                     return;
                 }
 
-                var dbContext = context.HttpContext.RequestServices
-                    .GetRequiredService<AppDbContext>();
-                var isRevoked = await dbContext.RevokedAccessTokens
-                    .AnyAsync(token =>
-                        token.TokenId == tokenId && token.ExpiresAt > DateTime.UtcNow);
-                if (isRevoked)
+                var validator = context.HttpContext.RequestServices
+                    .GetRequiredService<IAccessTokenSessionValidator>();
+                var roles = await validator.GetActiveRolesAsync(
+                    tokenId,
+                    sessionId,
+                    userId,
+                    tokenVersion,
+                    context.HttpContext.RequestAborted);
+                if (roles is null)
                 {
-                    context.Fail("The access token has been revoked.");
-                    return;
-                }
-
-                var activeSessionExists = await dbContext.RefreshTokens
-                    .AnyAsync(token =>
-                        token.SessionId == sessionId &&
-                        token.RevokedAt == null &&
-                        token.ExpiresAt > DateTime.UtcNow);
-                if (!activeSessionExists)
-                {
-                    context.Fail("The access token session has ended.");
-                    return;
-                }
-
-                var user = await dbContext.Users
-                    .Include(entity => entity.UserRoles)
-                    .ThenInclude(userRole => userRole.Role)
-                    .SingleOrDefaultAsync(entity => entity.Id == userId && entity.IsActive);
-                if (user is null || user.TokenVersion != tokenVersion)
-                {
-                    context.Fail("The user is inactive or no longer exists.");
+                    context.Fail("The access token session is no longer valid.");
                     return;
                 }
 
@@ -104,11 +107,9 @@ builder.Services
                         identity.RemoveClaim(claim);
                     }
 
-                    foreach (var role in user.UserRoles
-                                 .Select(userRole => userRole.Role)
-                                 .Where(role => role.IsActive))
+                    foreach (var role in roles)
                     {
-                        identity.AddClaim(new Claim(identity.RoleClaimType, role.Name));
+                        identity.AddClaim(new Claim(identity.RoleClaimType, role));
                     }
                 }
             }
@@ -152,6 +153,16 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngular", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()                     
+              .AllowAnyMethod();                    
+    });
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -160,9 +171,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
-app.UseMiddleware<IdentityExceptionMiddleware>();
+app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseCors("AllowAngular");
 app.UseAuthentication();
 app.UseAuthorization();
 
