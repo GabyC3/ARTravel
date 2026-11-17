@@ -20,6 +20,12 @@ public interface IProductStore
         int? excludingProductId,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyDictionary<int, string>> GetPrimaryImageUrlsAsync(
+        IReadOnlyCollection<int> productIds,
+        CancellationToken cancellationToken);
+
+    Task<bool> HasReferencesAsync(int productId, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<ProductDestination>> GetProductDestinationsAsync(
         int productId,
         CancellationToken cancellationToken);
@@ -45,6 +51,8 @@ public interface IProductStore
     Task<TourismProductImage?> FindProductImageAsync(int imageId, CancellationToken cancellationToken);
 
     void Add(TourismProduct product);
+
+    void Remove(TourismProduct product);
 
     void Add(TourismProductImage image);
 

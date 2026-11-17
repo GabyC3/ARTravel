@@ -8,7 +8,7 @@ namespace ARTravel.API.Controllers;
 
 [ApiController]
 [Route("api/itinerary-days/{dayId:int}/activities")]
-[Authorize(Policy = "Administrator")]
+[Authorize(Policy = "StaffRead")]
 public sealed class ItineraryDaysController(IItineraryService itineraryService) : ControllerBase
 {
     [HttpGet]
@@ -19,6 +19,7 @@ public sealed class ItineraryDaysController(IItineraryService itineraryService) 
         Ok(await itineraryService.GetActivitiesAsync(dayId, cancellationToken));
 
     [HttpPost]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<ItineraryActivityResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<ItineraryActivityResponse>> AddItineraryActivity(
         int dayId,
@@ -42,6 +43,7 @@ public sealed class ItineraryDaysController(IItineraryService itineraryService) 
     }
 
     [HttpPut("{activityId:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<ItineraryActivityResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ItineraryActivityResponse>> UpdateItineraryActivity(
         int dayId,
@@ -63,6 +65,7 @@ public sealed class ItineraryDaysController(IItineraryService itineraryService) 
             cancellationToken));
 
     [HttpDelete("{activityId:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RemoveItineraryActivity(
         int dayId,
@@ -74,6 +77,7 @@ public sealed class ItineraryDaysController(IItineraryService itineraryService) 
     }
 
     [HttpPatch("reorder")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ReorderItineraryActivities(
         int dayId,

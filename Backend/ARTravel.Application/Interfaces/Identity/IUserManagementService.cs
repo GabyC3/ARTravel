@@ -7,6 +7,7 @@ public interface IUserManagementService
     Task<PagedUsers> ListAsync(
         int page,
         int pageSize,
+        string? search,
         CancellationToken cancellationToken);
 
     Task<UserSummary> GetAsync(int userId, CancellationToken cancellationToken);

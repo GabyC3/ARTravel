@@ -15,6 +15,15 @@ public interface IDestinationStore
 
     Task<Destination?> FindDestinationAsync(int id, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<Destination>> ListParentDestinationsAsync(
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyDictionary<int, string>> GetPrimaryImageUrlsAsync(
+        IReadOnlyCollection<int> destinationIds,
+        CancellationToken cancellationToken);
+
+    Task<bool> HasReferencesAsync(int destinationId, CancellationToken cancellationToken);
+
     Task<(IReadOnlyList<Destination> Items, int TotalCount)> ListChildDestinationsAsync(
         int parentId,
         int skip,
@@ -41,6 +50,8 @@ public interface IDestinationStore
     Task<DestinationImage?> FindDestinationImageAsync(int imageId, CancellationToken cancellationToken);
 
     void Add(Destination destination);
+
+    void Remove(Destination destination);
 
     void Add(DestinationImage image);
 

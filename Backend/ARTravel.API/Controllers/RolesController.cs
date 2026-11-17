@@ -12,6 +12,7 @@ namespace ARTravel.API.Controllers;
 public sealed class RolesController(IRoleManagementService roleManagementService) : ControllerBase
 {
     [HttpGet]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<PagedRoles>(StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedRoles>> List(
         [FromQuery] int page = 1,
@@ -31,6 +32,7 @@ public sealed class RolesController(IRoleManagementService roleManagementService
     }
 
     [HttpPost]
+    [Authorize(Policy = "Administrator")]
     [ProducesResponseType<RoleSummary>(StatusCodes.Status201Created)]
     public async Task<ActionResult<RoleSummary>> Create(
         CreateRoleRequest request,
@@ -43,6 +45,7 @@ public sealed class RolesController(IRoleManagementService roleManagementService
     }
 
     [HttpPut("{roleId:int}")]
+    [Authorize(Policy = "Administrator")]
     [ProducesResponseType<RoleSummary>(StatusCodes.Status200OK)]
     public async Task<ActionResult<RoleSummary>> Update(
         int roleId,
@@ -57,6 +60,7 @@ public sealed class RolesController(IRoleManagementService roleManagementService
     }
 
     [HttpPatch("{roleId:int}/status")]
+    [Authorize(Policy = "Administrator")]
     [ProducesResponseType<RoleSummary>(StatusCodes.Status200OK)]
     public async Task<ActionResult<RoleSummary>> SetActive(
         int roleId,
@@ -71,6 +75,7 @@ public sealed class RolesController(IRoleManagementService roleManagementService
     }
 
     [HttpDelete("{roleId:int}")]
+    [Authorize(Policy = "Administrator")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(
         int roleId,
@@ -81,6 +86,7 @@ public sealed class RolesController(IRoleManagementService roleManagementService
     }
 
     [HttpPost("~/api/users/{userId:int}/roles/{roleId:int}")]
+    [Authorize(Policy = "Administrator")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Assign(
         int userId,
@@ -92,6 +98,7 @@ public sealed class RolesController(IRoleManagementService roleManagementService
     }
 
     [HttpDelete("~/api/users/{userId:int}/roles/{roleId:int}")]
+    [Authorize(Policy = "Administrator")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Remove(
         int userId,

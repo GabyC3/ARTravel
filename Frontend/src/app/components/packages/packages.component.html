@@ -1,0 +1,315 @@
+<div *ngIf="toastMessage" class="toast" [class.toast-error]="toastType === 'error'"
+  [class.toast-success]="toastType === 'success'" [attr.role]="toastType === 'error' ? 'alert' : 'status'">
+  <span>{{ toastMessage }}</span>
+  <button type="button" aria-label="Cerrar notificación" (click)="clearToast()">×</button>
+</div>
+
+<section class="packages-page">
+  <header class="packages-heading">
+    <div>
+      <p class="eyebrow">GESTIÓN TURÍSTICA</p>
+      <h1>Paquetes Turísticos</h1>
+    </div>
+    <button class="primary-button" type="button" (click)="openCreateDialog()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      Nuevo Paquete
+    </button>
+  </header>
+
+  <div class="toolbar">
+    <label class="search-box">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m16 16 4 4" />
+      </svg>
+      <input type="search" name="packageSearch" [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange($event)"
+        placeholder="Buscar por paquete, código o destino..." aria-label="Buscar paquetes" />
+      <button *ngIf="searchText" type="button" class="clear-search" aria-label="Limpiar búsqueda"
+        (click)="searchText = ''; onSearchChange('')">×</button>
+    </label>
+
+    <div class="filter-wrap">
+      <button class="filter-button" type="button" [attr.aria-expanded]="isFilterOpen"
+        (click)="isFilterOpen = !isFilterOpen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6.5 7.5V19l-3 1v-7.5L4 5Z" /></svg>
+        Filtros
+        <span class="filter-indicator" *ngIf="statusFilter !== 'all'"></span>
+      </button>
+      <div class="filter-panel" *ngIf="isFilterOpen">
+        <strong>Estado del paquete</strong>
+        <button *ngFor="let filter of statusFilters" type="button"
+          [class.selected]="statusFilter === filter.value" (click)="setStatusFilter(filter.value)">
+          <span>{{ filter.label }}</span>
+          <svg *ngIf="statusFilter === filter.value" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="m4 10 4 4 8-8" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="list-summary">
+    <span *ngIf="!isLoading">{{ firstVisibleResult }}–{{ lastVisibleResult }} de {{ totalCount }} paquetes</span>
+    <span *ngIf="isLoading">Cargando paquetes...</span>
+  </div>
+  <div *ngIf="error" class="notice error-notice" role="alert">{{ error }}</div>
+
+  <div *ngIf="isLoading && packages.length === 0" class="loading-state" aria-live="polite">
+    <span class="spinner"></span>
+    Cargando paquetes turísticos...
+  </div>
+
+  <div *ngIf="!isLoading && !error && packages.length === 0" class="empty-state">
+    <span class="empty-icon">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m12 3 9 5-9 5-9-5 9-5ZM3 8v9l9 5 9-5V8M12 13v9" />
+      </svg>
+    </span>
+    <h2>{{ searchText ? 'No se encontraron paquetes' : 'Todavía no hay paquetes turísticos' }}</h2>
+    <p *ngIf="searchText">Prueba con otro nombre, código, provincia o destino.</p>
+    <p *ngIf="!searchText">Crea el primer paquete para comenzar a ofrecer experiencias.</p>
+    <button class="secondary-button" type="button" (click)="openCreateDialog()">Crear paquete</button>
+  </div>
+
+  <div class="package-grid" *ngIf="packages.length > 0">
+    <article class="package-card" *ngFor="let product of packages">
+      <div class="package-cover" [ngClass]="packageTheme(product)">
+        <img *ngIf="product.primaryImageUrl" [src]="product.primaryImageUrl" [alt]="product.name"
+          loading="lazy" />
+        <span class="package-status" [class.status-draft]="!product.isPublished"
+          [class.status-inactive]="!product.isActive">
+          {{ !product.isActive ? 'Inactivo' : product.isPublished ? 'Publicado' : 'Borrador' }}
+        </span>
+      </div>
+      <div class="package-card-body">
+        <h2 [title]="product.name">{{ product.name }}</h2>
+        <p class="package-duration">{{ durationLabel(product) }}</p>
+        <p class="package-price">Desde <strong>{{ product.basePrice | currency:product.currency:'symbol':'1.0-0' }}</strong></p>
+        <button class="details-button" type="button" (click)="openDetailsDialog(product)">
+          Ver detalles
+        </button>
+      </div>
+    </article>
+  </div>
+
+  <footer class="pagination" *ngIf="totalPages > 1">
+    <span>Página {{ currentPage }} de {{ totalPages }}</span>
+    <div>
+      <button type="button" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">Anterior</button>
+      <button type="button" [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">Siguiente</button>
+    </div>
+  </footer>
+</section>
+
+<div class="modal-backdrop" *ngIf="modal" (click)="closeDialog()">
+  <section class="package-modal" role="dialog" aria-modal="true"
+    aria-labelledby="package-modal-title" (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <div>
+        <p class="eyebrow">{{ modal === 'details' ? 'INFORMACIÓN DEL PAQUETE' : 'GESTIÓN DE PAQUETES' }}</p>
+        <h2 id="package-modal-title">
+          {{ modal === 'create' ? 'Nuevo paquete turístico' : modal === 'edit' ? 'Editar paquete' : modal === 'delete' ? 'Eliminar paquete' : 'Detalles del paquete' }}
+        </h2>
+      </div>
+      <button type="button" class="modal-close" aria-label="Cerrar" [disabled]="isSaving" (click)="closeDialog()">×</button>
+    </header>
+
+    <div *ngIf="modalError" class="notice error-notice modal-notice" role="alert">{{ modalError }}</div>
+
+    <ng-container *ngIf="modal === 'details'">
+      <div *ngIf="!selectedDetail && !modalError" class="modal-loading">Cargando información del paquete...</div>
+      <div *ngIf="selectedDetail as detail" class="package-details">
+        <div class="detail-cover" [ngClass]="packageTheme(detail.product)">
+          <img *ngIf="detail.images.length > 0"
+            [src]="detail.images.find(image => image.isPrimary)?.imageUrl || detail.images[0].imageUrl"
+            [alt]="detail.product.name" />
+        </div>
+        <div class="detail-title-row">
+          <div>
+            <h3>{{ detail.product.name }}</h3>
+            <p>{{ detail.product.code }} · {{ durationLabel(detail.product) }}</p>
+          </div>
+          <span class="package-status" [class.status-draft]="!detail.product.isPublished"
+            [class.status-inactive]="!detail.product.isActive">
+            {{ !detail.product.isActive ? 'Inactivo' : detail.product.isPublished ? 'Publicado' : 'Borrador' }}
+          </span>
+        </div>
+        <dl class="detail-grid">
+          <div><dt>Precio estimado</dt><dd>{{ detail.product.basePrice | currency:detail.product.currency:'symbol':'1.2-2' }}</dd></div>
+          <div><dt>Pasajeros</dt><dd>{{ detail.product.minimumPassengers }}{{ detail.product.maximumPassengers ? ' a ' + detail.product.maximumPassengers : ' o más' }}</dd></div>
+          <div class="full-row"><dt>Descripción</dt><dd>{{ detail.product.description || 'Sin descripción disponible.' }}</dd></div>
+          <div class="full-row"><dt>Destinos y orden de visita</dt>
+            <dd *ngIf="detail.destinations.length === 0">Sin destinos asignados.</dd>
+            <ol *ngIf="detail.destinations.length > 0" class="detail-destinations">
+              <li *ngFor="let destination of detail.destinations">
+                {{ destination.destinationName }} — {{ destination.province || destination.city || destination.country }}
+                <span *ngIf="destination.isMainDestination">(principal)</span>
+              </li>
+            </ol>
+          </div>
+          <div class="full-row" *ngIf="detail.product.includes"><dt>Incluye</dt><dd>{{ detail.product.includes }}</dd></div>
+          <div class="full-row" *ngIf="detail.product.excludes"><dt>No incluye</dt><dd>{{ detail.product.excludes }}</dd></div>
+          <div class="full-row" *ngIf="detail.product.recommendations"><dt>Recomendaciones</dt><dd>{{ detail.product.recommendations }}</dd></div>
+          <div class="full-row" *ngIf="detail.product.cancellationPolicy"><dt>Política de cancelación</dt><dd>{{ detail.product.cancellationPolicy }}</dd></div>
+        </dl>
+        <footer class="modal-footer details-footer">
+          <button type="button" class="secondary-button" (click)="closeDialog()">Cerrar</button>
+          <button type="button" class="secondary-button" [disabled]="isSaving" (click)="togglePublication()">
+            {{ detail.product.isPublished ? 'Despublicar' : 'Activar y publicar' }}
+          </button>
+          <button type="button" class="secondary-button" [disabled]="isSaving" (click)="toggleStatus()">
+            {{ detail.product.isActive ? 'Desactivar' : 'Activar' }}
+          </button>
+          <button type="button" class="primary-button" (click)="openEditDialog()">Editar</button>
+          <button type="button" class="danger-button" [disabled]="isSaving" (click)="openDeleteDialog()">Eliminar</button>
+        </footer>
+      </div>
+    </ng-container>
+
+    <form *ngIf="modal === 'create' || modal === 'edit'" #packageForm="ngForm"
+      class="package-form" (ngSubmit)="submit(packageForm.valid === true)">
+      <div class="form-row">
+        <label class="form-field">
+          <span>Nombre del paquete <b>*</b></span>
+          <input type="text" name="name" [(ngModel)]="form.name" maxlength="200" required />
+        </label>
+        <label class="form-field">
+          <span>Código <b>*</b></span>
+          <input type="text" name="code" [(ngModel)]="form.code" maxlength="50" required />
+        </label>
+      </div>
+      <label class="form-field">
+        <span>Descripción</span>
+        <textarea name="description" [(ngModel)]="form.description" maxlength="4000" rows="2"></textarea>
+      </label>
+      <div class="form-row three-columns">
+        <label class="form-field">
+          <span>Días <b>*</b></span>
+          <input type="number" name="durationDays" [(ngModel)]="form.durationDays" min="0" required />
+        </label>
+        <label class="form-field">
+          <span>Noches <b>*</b></span>
+          <input type="number" name="durationNights" [(ngModel)]="form.durationNights" min="0" required />
+        </label>
+        <label class="form-field">
+          <span>Precio estimado <b>*</b></span>
+          <input type="text" name="basePrice" [(ngModel)]="form.basePrice"
+            inputmode="decimal" pattern="^[0-9]+([.,][0-9]{1,2})?$"
+            (ngModelChange)="onBasePriceInput($event)"
+            placeholder="Ej. 125000.50" required />
+        </label>
+      </div>
+      <div class="form-row three-columns">
+        <label class="form-field">
+          <span>Moneda <b>*</b></span>
+          <input type="text" name="currency" [(ngModel)]="form.currency" minlength="3"
+            maxlength="3" pattern="[A-Za-z]{3}" required />
+        </label>
+        <label class="form-field">
+          <span>Mínimo de pasajeros <b>*</b></span>
+          <input type="number" name="minimumPassengers" [(ngModel)]="form.minimumPassengers" min="1" required />
+        </label>
+        <label class="form-field">
+          <span>Máximo de pasajeros</span>
+          <input type="number" name="maximumPassengers" [(ngModel)]="form.maximumPassengers"
+            [min]="form.minimumPassengers" />
+        </label>
+      </div>
+
+      <fieldset class="selection-fieldset">
+        <legend>Destinos y orden de visita <b>*</b></legend>
+        <p class="fieldset-hint" *ngIf="isLoadingDestinations">Cargando destinos disponibles...</p>
+        <p class="fieldset-hint" *ngIf="!isLoadingDestinations && destinations.length === 0">
+          No hay destinos activos para asignar. Primero agrega o activa un destino.
+        </p>
+        <div class="destination-options" *ngIf="destinations.length > 0">
+          <div class="destination-option" *ngFor="let destination of destinations">
+            <label>
+              <input type="checkbox" [checked]="selectedDestinationIds.includes(destination.id)"
+                (change)="toggleDestination(destination.id, $event)" />
+              <span>{{ destination.name }} — {{ destination.province || destination.city || destination.country }}</span>
+            </label>
+            <div class="destination-order" *ngIf="selectedDestinationIds.includes(destination.id)">
+              <label>
+                <input type="radio" name="mainDestination" [value]="destination.id"
+                  [(ngModel)]="mainDestinationId" />
+                Principal
+              </label>
+              <span>Orden {{ selectedDestinationIds.indexOf(destination.id) + 1 }}</span>
+              <button type="button" aria-label="Mover arriba" (click)="moveDestination(destination.id, -1)">↑</button>
+              <button type="button" aria-label="Mover abajo" (click)="moveDestination(destination.id, 1)">↓</button>
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="selection-fieldset">
+        <legend>Imágenes del paquete</legend>
+        <p class="fieldset-hint">Elige una portada y las imágenes que quieras mostrar.</p>
+        <div class="image-option-list">
+          <div class="image-option" *ngFor="let image of selectableImages">
+            <label class="image-checkbox">
+              <input type="checkbox" [checked]="selectedImageUrls.includes(image.url)"
+                (change)="toggleImage(image.url, $event)" />
+              <img [src]="image.url" [alt]="image.altText" />
+              <span>{{ image.label }}</span>
+            </label>
+            <label class="primary-image-option" *ngIf="selectedImageUrls.includes(image.url)">
+              <input type="radio" name="primaryPackageImage" [checked]="primaryImageUrl === image.url"
+                (change)="setPrimaryImage(image.url)" />
+              Portada
+            </label>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="form-row">
+        <label class="form-field">
+          <span>Incluye</span>
+          <textarea name="includes" [(ngModel)]="form.includes" maxlength="4000" rows="2"></textarea>
+        </label>
+        <label class="form-field">
+          <span>No incluye</span>
+          <textarea name="excludes" [(ngModel)]="form.excludes" maxlength="4000" rows="2"></textarea>
+        </label>
+      </div>
+      <div class="form-row">
+        <label class="form-field">
+          <span>Recomendaciones</span>
+          <textarea name="recommendations" [(ngModel)]="form.recommendations" maxlength="4000" rows="2"></textarea>
+        </label>
+        <label class="form-field">
+          <span>Política de cancelación</span>
+          <textarea name="cancellationPolicy" [(ngModel)]="form.cancellationPolicy" maxlength="4000" rows="2"></textarea>
+        </label>
+      </div>
+      <label class="publish-option" *ngIf="modal === 'create'">
+        <input type="checkbox" name="publishWhenReady" [(ngModel)]="form.publishWhenReady" />
+        <span>Activar y publicar al terminar de guardar destinos e imágenes</span>
+      </label>
+      <p class="form-hint"><b>*</b> Campos obligatorios. Los paquetes nuevos se guardan como borrador.</p>
+      <footer class="modal-footer">
+        <button type="button" class="secondary-button" [disabled]="isSaving" (click)="closeDialog()">Cancelar</button>
+        <button type="submit" class="primary-button"
+          [disabled]="isSaving || isLoadingDestinations || destinations.length === 0 || selectedDestinationIds.length === 0">
+          {{ isSaving ? 'Guardando...' : modal === 'edit' ? 'Guardar cambios' : 'Crear paquete' }}
+        </button>
+      </footer>
+    </form>
+
+    <div *ngIf="modal === 'delete'" class="delete-confirmation">
+      <span class="delete-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18.5A1.7 1.7 0 0 0 3.3 21h17.4a1.7 1.7 0 0 0 1.5-2.5L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg>
+      </span>
+      <p>¿Seguro que deseas eliminar <strong>{{ selectedPackage?.name }}</strong>?</p>
+      <p class="delete-hint">Los paquetes con itinerarios o salidas asociadas no se pueden eliminar; en ese caso, desactívalos.</p>
+      <footer class="modal-footer">
+        <button type="button" class="secondary-button" [disabled]="isSaving" (click)="closeDialog()">Cancelar</button>
+        <button type="button" class="danger-button" [disabled]="isSaving" (click)="confirmDelete()">
+          {{ isSaving ? 'Eliminando...' : 'Sí, eliminar' }}
+        </button>
+      </footer>
+    </div>
+  </section>
+</div>

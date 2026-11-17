@@ -11,7 +11,7 @@ namespace ARTravel.API.Controllers;
 
 [ApiController]
 [Route("api/products")]
-[Authorize(Policy = "Administrator")]
+[Authorize(Policy = "StaffRead")]
 public sealed class ProductsController(
     IProductService productService,
     IDepartureService departureService) : ControllerBase
@@ -43,6 +43,7 @@ public sealed class ProductsController(
         Ok(await productService.GetAsync(id, cancellationToken));
 
     [HttpPost]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<ProductDetail>(StatusCodes.Status201Created)]
     public async Task<ActionResult<ProductDetail>> CreateProduct(
         CreateProductRequest request,
@@ -71,6 +72,7 @@ public sealed class ProductsController(
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<ProductDetail>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ProductDetail>> UpdateProduct(
         int id,
@@ -95,7 +97,19 @@ public sealed class ProductsController(
                 request.CancellationPolicy),
             cancellationToken));
 
+    [HttpDelete("{id:int}")]
+    [Authorize(Policy = "Manager")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeleteProduct(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        await productService.DeleteAsync(id, cancellationToken);
+        return NoContent();
+    }
+
     [HttpPatch("{id:int}/status")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<TourismProductResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<TourismProductResponse>> UpdateProductStatus(
         int id,
@@ -107,6 +121,7 @@ public sealed class ProductsController(
             cancellationToken));
 
     [HttpPatch("{id:int}/publication")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<TourismProductResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<TourismProductResponse>> UpdateProductPublication(
         int id,
@@ -125,6 +140,7 @@ public sealed class ProductsController(
         Ok(await productService.GetDestinationsAsync(id, cancellationToken));
 
     [HttpPost("{id:int}/destinations")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<IReadOnlyList<ProductDestinationResponse>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<ProductDestinationResponse>>> AssignProductDestinations(
         int id,
@@ -142,6 +158,7 @@ public sealed class ProductsController(
             cancellationToken));
 
     [HttpDelete("{id:int}/destinations/{destinationId:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RemoveProductDestination(
         int id,
@@ -153,6 +170,7 @@ public sealed class ProductsController(
     }
 
     [HttpPost("{id:int}/images")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<ProductImageResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<ProductImageResponse>> AddProductImage(
         int id,
@@ -170,6 +188,7 @@ public sealed class ProductsController(
     }
 
     [HttpDelete("{id:int}/images/{imageId:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RemoveProductImage(
         int id,
@@ -181,6 +200,7 @@ public sealed class ProductsController(
     }
 
     [HttpPatch("{id:int}/images/{imageId:int}/primary")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<ProductImageResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ProductImageResponse>> SetPrimaryProductImage(
         int id,
@@ -202,6 +222,7 @@ public sealed class ProductsController(
             cancellationToken));
 
     [HttpPost("{id:int}/departures")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<DepartureResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<DepartureResponse>> CreateProductDeparture(
         int id,

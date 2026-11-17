@@ -40,7 +40,13 @@ public sealed class EfProductStore(AppDbContext dbContext) : IProductStore
             query = query.Where(product =>
                 EF.Functions.ILike(product.Name, pattern) ||
                 EF.Functions.ILike(product.Code, pattern) ||
-                EF.Functions.ILike(product.Description ?? string.Empty, pattern));
+                EF.Functions.ILike(product.Description ?? string.Empty, pattern) ||
+                dbContext.ProductDestinations.Any(link =>
+                    link.ProductId == product.Id &&
+                    (EF.Functions.ILike(link.Destination.Name, pattern) ||
+                     EF.Functions.ILike(link.Destination.Country, pattern) ||
+                     EF.Functions.ILike(link.Destination.Province ?? string.Empty, pattern) ||
+                     EF.Functions.ILike(link.Destination.City ?? string.Empty, pattern))));
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
@@ -63,6 +69,37 @@ public sealed class EfProductStore(AppDbContext dbContext) : IProductStore
         dbContext.Products.SingleOrDefaultAsync(
             product => product.Code == code &&
                        (!excludingProductId.HasValue || product.Id != excludingProductId.Value),
+            cancellationToken);
+
+    public async Task<IReadOnlyDictionary<int, string>> GetPrimaryImageUrlsAsync(
+        IReadOnlyCollection<int> productIds,
+        CancellationToken cancellationToken)
+    {
+        if (productIds.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        var images = await dbContext.TourismProductImages
+            .AsNoTracking()
+            .Where(image => productIds.Contains(image.ProductId))
+            .OrderByDescending(image => image.IsPrimary)
+            .ThenBy(image => image.DisplayOrder)
+            .ThenBy(image => image.Id)
+            .Select(image => new { image.ProductId, image.ImageUrl })
+            .ToListAsync(cancellationToken);
+
+        return images
+            .GroupBy(image => image.ProductId)
+            .ToDictionary(group => group.Key, group => group.First().ImageUrl);
+    }
+
+    public async Task<bool> HasReferencesAsync(int productId, CancellationToken cancellationToken) =>
+        await dbContext.Itineraries.AnyAsync(
+            itinerary => itinerary.ProductId == productId,
+            cancellationToken) ||
+        await dbContext.Departures.AnyAsync(
+            departure => departure.ProductId == productId,
             cancellationToken);
 
     public async Task<IReadOnlyList<ProductDestination>> GetProductDestinationsAsync(
@@ -131,6 +168,8 @@ public sealed class EfProductStore(AppDbContext dbContext) : IProductStore
             cancellationToken);
 
     public void Add(TourismProduct product) => dbContext.Products.Add(product);
+
+    public void Remove(TourismProduct product) => dbContext.Products.Remove(product);
 
     public void Add(TourismProductImage image) => dbContext.TourismProductImages.Add(image);
 

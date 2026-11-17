@@ -11,7 +11,7 @@ namespace ARTravel.API.Controllers;
 
 [ApiController]
 [Route("api/departures")]
-[Authorize(Policy = "Administrator")]
+[Authorize(Policy = "StaffRead")]
 public sealed class DeparturesController(
     IDepartureService departureService,
     IReservationService reservationService) : ControllerBase
@@ -39,6 +39,7 @@ public sealed class DeparturesController(
         Ok(await departureService.GetAsync(id, cancellationToken));
 
     [HttpPost]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<DepartureResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<DepartureResponse>> CreateDeparture(
         CreateDepartureRequest request,
@@ -49,6 +50,7 @@ public sealed class DeparturesController(
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<DepartureResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<DepartureResponse>> UpdateDeparture(
         int id,
@@ -70,6 +72,7 @@ public sealed class DeparturesController(
             cancellationToken));
 
     [HttpPatch("{id:int}/status")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<DepartureResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<DepartureResponse>> UpdateDepartureStatus(
         int id,
@@ -81,6 +84,7 @@ public sealed class DeparturesController(
             cancellationToken));
 
     [HttpPost("{id:int}/cancel")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<DepartureResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<DepartureResponse>> CancelDeparture(
         int id,
@@ -115,6 +119,7 @@ public sealed class DeparturesController(
         Ok(await departureService.GetPricesAsync(id, cancellationToken));
 
     [HttpPost("{id:int}/prices")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<DeparturePriceResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<DeparturePriceResponse>> AddDeparturePrice(
         int id,
@@ -129,6 +134,7 @@ public sealed class DeparturesController(
     }
 
     [HttpPut("{id:int}/prices/{priceId:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<DeparturePriceResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<DeparturePriceResponse>> UpdateDeparturePrice(
         int id,
@@ -142,6 +148,7 @@ public sealed class DeparturesController(
             cancellationToken));
 
     [HttpDelete("{id:int}/prices/{priceId:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RemoveDeparturePrice(
         int id,

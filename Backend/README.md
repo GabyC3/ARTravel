@@ -16,6 +16,44 @@ Infrastructure -> Domain
 - PostgreSQL.
 - EF CLI 8.0.15 (`dotnet tool install --global dotnet-ef --version 8.0.15`).
 
+## Setup on a new computer
+
+1. Install PostgreSQL and the .NET 8 SDK.
+2. Clone the repository and open a terminal at the repository root.
+3. Copy the environment template:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+4. Edit `.env` and set `ConnectionStrings__DefaultConnection` for the PostgreSQL server/database to use. Set `Jwt__SigningKey` to a private random value of at least 32 characters.
+5. Restore dependencies:
+
+```powershell
+dotnet restore .\Backend\ARTravel.sln
+```
+
+6. Apply migrations and seed data:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet ef database update `
+  --project .\Backend\ARTravel.Infrastructure\ARTravel.Infrastructure.csproj `
+  --startup-project .\Backend\ARTravel.API\ARTravel.API.csproj
+```
+
+The migrations create the database objects and seed the base roles `User`, `Admin`, `Manager`, `Agente`, `Operador`, and `Guia`, plus the default identity configuration. Import or create operational seed data from the API or add it through the database before using modules with required destinations, products, departures, and customers.
+
+7. Start the API:
+
+```powershell
+dotnet run --project .\Backend\ARTravel.API\ARTravel.API.csproj --launch-profile ARTravel.API
+```
+
+8. Verify `http://localhost:52107/swagger` and `http://localhost:52107/health/database`.
+
+For Visual Studio 2022, open `Backend\ARTravel.sln`, select `ARTravel.API` as the startup project, and use the `ARTravel.API` launch profile.
+
 From the repository root, copy `.env.example` to `.env` and set your local PostgreSQL password and a private JWT signing key:
 
 ```powershell

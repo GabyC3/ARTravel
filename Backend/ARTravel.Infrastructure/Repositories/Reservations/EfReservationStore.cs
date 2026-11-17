@@ -33,7 +33,12 @@ public sealed class EfReservationStore(AppDbContext dbContext) : IReservationSto
         {
             var pattern = $"%{search.Trim()}%";
             query = query.Where(reservation =>
-                EF.Functions.ILike(reservation.ReservationNumber, pattern));
+                EF.Functions.ILike(reservation.ReservationNumber, pattern) ||
+                EF.Functions.ILike(reservation.Customer.FirstName ?? string.Empty, pattern) ||
+                EF.Functions.ILike(reservation.Customer.LastName ?? string.Empty, pattern) ||
+                EF.Functions.ILike(reservation.Customer.BusinessName ?? string.Empty, pattern) ||
+                EF.Functions.ILike(reservation.Customer.DocumentNumber, pattern) ||
+                EF.Functions.ILike(reservation.Customer.Email ?? string.Empty, pattern));
         }
 
         if (customerId.HasValue)

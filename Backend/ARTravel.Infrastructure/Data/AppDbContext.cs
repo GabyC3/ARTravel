@@ -93,6 +93,42 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                     Description = "Administrator",
                     IsActive = true,
                     CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Role
+                {
+                    Id = 3,
+                    Name = "Manager",
+                    NormalizedName = "MANAGER",
+                    Description = "Manager",
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Role
+                {
+                    Id = 4,
+                    Name = "Agente",
+                    NormalizedName = "AGENTE",
+                    Description = "Commercial agent",
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Role
+                {
+                    Id = 5,
+                    Name = "Operador",
+                    NormalizedName = "OPERADOR",
+                    Description = "Tourism operator",
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Role
+                {
+                    Id = 6,
+                    Name = "Guia",
+                    NormalizedName = "GUIA",
+                    Description = "Tour guide",
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
                 });
         });
 
@@ -345,7 +381,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(image => image.AltText).HasMaxLength(300);
             entity.HasIndex(image => new { image.DestinationId, image.DisplayOrder });
             entity.HasOne<Destination>()
-                .WithMany()
+                .WithMany(destination => destination.Images)
                 .HasForeignKey(image => image.DestinationId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

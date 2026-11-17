@@ -121,6 +121,28 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(
         "Administrator",
         policy => policy.RequireAuthenticatedUser().RequireRole("Admin"));
+    options.AddPolicy(
+        "Manager",
+        policy => policy.RequireAuthenticatedUser().RequireRole("Admin", "Manager"));
+    options.AddPolicy(
+        "Commercial",
+        policy => policy.RequireAuthenticatedUser().RequireRole("Admin", "Manager", "Agent", "Agente"));
+    options.AddPolicy(
+        "StaffRead",
+        policy => policy.RequireAuthenticatedUser().RequireRole(
+            "Admin", "Manager", "Agent", "Agente", "Operator", "Operador", "Guide", "Guia"));
+    options.AddPolicy(
+        "CustomerRead",
+        policy => policy.RequireAuthenticatedUser().RequireRole(
+            "Admin", "Manager", "Agent", "Agente", "Operator", "Operador"));
+    options.AddPolicy(
+        "CustomerManagement",
+        policy => policy.RequireAuthenticatedUser().RequireRole(
+            "Admin", "Manager", "Agent", "Agente"));
+    options.AddPolicy(
+        "PassengerManagement",
+        policy => policy.RequireAuthenticatedUser().RequireRole(
+            "Admin", "Manager", "Agent", "Agente", "Operator", "Operador"));
 });
 
 builder.Services.AddEndpointsApiExplorer();

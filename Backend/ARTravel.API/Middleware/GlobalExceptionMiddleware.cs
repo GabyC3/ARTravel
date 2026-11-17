@@ -26,6 +26,10 @@ public sealed class GlobalExceptionMiddleware(
         {
             await WriteProblemAsync(context, StatusCodes.Status404NotFound, exception.Message);
         }
+        catch (DestinationConflictException exception)
+        {
+            await WriteProblemAsync(context, StatusCodes.Status409Conflict, exception.Message);
+        }
         catch (ProductNotFoundException exception)
         {
             await WriteProblemAsync(context, StatusCodes.Status404NotFound, exception.Message);

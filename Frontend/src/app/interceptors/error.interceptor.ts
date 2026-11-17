@@ -7,17 +7,16 @@ import { AuthService } from '../services/auth.service';
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     const router = inject(Router);
     const authService = inject(AuthService);
+    const isPublicAuthRequest = /\/auth\/(login|refresh-token|register)(?:\?|$)/.test(req.url);
     
     return next(req).pipe(
         catchError(error => {
-            if (error.status === 401) {
-                // Token inválido o expirado -> logout y redirigir
+            if (error.status === 401 && !isPublicAuthRequest) {
                 authService.logout();
                 router.navigate(['/login']);
             }
         
             if (error.status === 403) {
-                // No tiene permisos
                 router.navigate(['/sin-permiso']);
             }
 

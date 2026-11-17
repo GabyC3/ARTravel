@@ -26,8 +26,15 @@ public sealed class ProductService(IProductStore store) : IProductService
             isPublished,
             isActive,
             cancellationToken);
+        var primaryImageUrls = await store.GetPrimaryImageUrlsAsync(
+            result.Items.Select(product => product.Id).ToArray(),
+            cancellationToken);
         return new PagedProducts(
-            result.Items.Select(ToResponse).ToArray(),
+            result.Items
+                .Select(product => ToResponse(
+                    product,
+                    primaryImageUrls.GetValueOrDefault(product.Id)))
+                .ToArray(),
             page,
             pageSize,
             result.TotalCount);
@@ -118,6 +125,19 @@ public sealed class ProductService(IProductStore store) : IProductService
         product.UpdatedAt = DateTime.UtcNow;
         await store.SaveChangesAsync(cancellationToken);
         return await GetAsync(id, cancellationToken);
+    }
+
+    public async Task DeleteAsync(int id, CancellationToken cancellationToken)
+    {
+        var product = await GetProductAsync(id, cancellationToken);
+        if (await store.HasReferencesAsync(id, cancellationToken))
+        {
+            throw new ProductConflictException(
+                "The package cannot be deleted while it is used by itineraries or departures. Deactivate it instead.");
+        }
+
+        store.Remove(product);
+        await store.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<TourismProductResponse> SetStatusAsync(
@@ -377,6 +397,16 @@ public sealed class ProductService(IProductStore store) : IProductService
         {
             throw new ArgumentException("BasePrice cannot be negative.");
         }
+        if (basePrice > 9999999999.99m)
+        {
+            throw new ArgumentException(
+                "BasePrice cannot exceed 9999999999.99.");
+        }
+        if (decimal.Round(basePrice, 2) != basePrice)
+        {
+            throw new ArgumentException(
+                "BasePrice cannot have more than 2 decimal places.");
+        }
 
         _ = NormalizeCurrency(currency);
         if (minimumPassengers < 1 ||
@@ -414,7 +444,9 @@ public sealed class ProductService(IProductStore store) : IProductService
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static TourismProductResponse ToResponse(TourismProduct product) =>
+    private static TourismProductResponse ToResponse(
+        TourismProduct product,
+        string? primaryImageUrl = null) =>
         new(
             product.Id,
             product.Name,
@@ -434,7 +466,8 @@ public sealed class ProductService(IProductStore store) : IProductService
             product.IsPublished,
             product.IsActive,
             product.CreatedAt,
-            product.UpdatedAt);
+            product.UpdatedAt,
+            primaryImageUrl);
 
     private static ProductDestinationResponse ToResponse(ProductDestination link) =>
         new(
@@ -446,7 +479,8 @@ public sealed class ProductService(IProductStore store) : IProductService
             link.Destination.Name,
             link.Destination.Country,
             link.Destination.City,
-            link.Destination.DestinationType);
+            link.Destination.DestinationType,
+            link.Destination.Province);
 
     private static ProductImageResponse ToResponse(TourismProductImage image) =>
         new(

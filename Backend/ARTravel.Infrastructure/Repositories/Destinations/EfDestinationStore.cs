@@ -58,6 +58,59 @@ public sealed class EfDestinationStore(AppDbContext dbContext) : IDestinationSto
             destination => destination.Id == id,
             cancellationToken);
 
+    public async Task<IReadOnlyList<Destination>> ListParentDestinationsAsync(
+        CancellationToken cancellationToken) =>
+        await dbContext.Destinations
+            .AsNoTracking()
+            .Where(destination => destination.ParentDestinationId == null && destination.IsActive)
+            .OrderBy(destination => destination.Name)
+            .ThenBy(destination => destination.Id)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyDictionary<int, string>> GetPrimaryImageUrlsAsync(
+        IReadOnlyCollection<int> destinationIds,
+        CancellationToken cancellationToken)
+    {
+        if (destinationIds.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        var images = await dbContext.DestinationImages
+            .AsNoTracking()
+            .Where(image => destinationIds.Contains(image.DestinationId))
+            .OrderByDescending(image => image.IsPrimary)
+            .ThenBy(image => image.DisplayOrder)
+            .ThenBy(image => image.Id)
+            .Select(image => new { image.DestinationId, image.ImageUrl })
+            .ToListAsync(cancellationToken);
+
+        return images
+            .GroupBy(image => image.DestinationId)
+            .ToDictionary(group => group.Key, group => group.First().ImageUrl);
+    }
+
+    public async Task<bool> HasReferencesAsync(int destinationId, CancellationToken cancellationToken)
+    {
+        if (await dbContext.Destinations.AnyAsync(
+                destination => destination.ParentDestinationId == destinationId,
+                cancellationToken))
+        {
+            return true;
+        }
+
+        if (await dbContext.ProductDestinations.AnyAsync(
+                link => link.DestinationId == destinationId,
+                cancellationToken))
+        {
+            return true;
+        }
+
+        return await dbContext.ItineraryActivities.AnyAsync(
+            activity => activity.DestinationId == destinationId,
+            cancellationToken);
+    }
+
     public async Task<(IReadOnlyList<Destination> Items, int TotalCount)> ListChildDestinationsAsync(
         int parentId,
         int skip,
@@ -141,6 +194,8 @@ public sealed class EfDestinationStore(AppDbContext dbContext) : IDestinationSto
             cancellationToken);
 
     public void Add(Destination destination) => dbContext.Destinations.Add(destination);
+
+    public void Remove(Destination destination) => dbContext.Destinations.Remove(destination);
 
     public void Add(DestinationImage image) => dbContext.DestinationImages.Add(image);
 

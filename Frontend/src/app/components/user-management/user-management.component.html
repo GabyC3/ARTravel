@@ -1,0 +1,237 @@
+<div *ngIf="toastMessage" class="toast" [class.toast-error]="toastType === 'error'"
+  [class.toast-success]="toastType === 'success'" [attr.role]="toastType === 'error' ? 'alert' : 'status'">
+  <span>{{ toastMessage }}</span>
+  <button type="button" aria-label="Cerrar notificación" (click)="clearToast()">×</button>
+</div>
+
+<section class="users-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">ADMINISTRACIÓN DEL SISTEMA</p>
+      <h1>Gestión de usuarios</h1>
+    </div>
+    <div class="heading-actions">
+      <button class="secondary-button" type="button" (click)="openCreateRoleDialog()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        Crear rol
+      </button>
+      <button class="primary-button" type="button" (click)="openCreateDialog()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        Nuevo usuario
+      </button>
+    </div>
+  </header>
+
+  <section class="roles-panel" aria-label="Roles disponibles">
+    <div class="roles-panel-heading">
+      <div>
+        <h2>Roles disponibles</h2>
+        <p>Los nuevos usuarios reciben el rol predeterminado Usuario.</p>
+      </div>
+      <span *ngIf="isLoadingRoles">Cargando roles...</span>
+    </div>
+    <div *ngIf="roleError" class="notice error-notice" role="alert">{{ roleError }}</div>
+    <div *ngIf="!isLoadingRoles && !roleError" class="role-chips">
+      <span *ngFor="let role of activeRoles" class="role-chip">
+        <strong>{{ roleLabel(role.name) }}</strong>
+        <small *ngIf="role.description">{{ role.description }}</small>
+      </span>
+      <span *ngIf="activeRoles.length === 0" class="no-roles">No hay roles activos disponibles.</span>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <label class="search-box">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4" /></svg>
+      <input type="search" name="userSearch" [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange($event)"
+        placeholder="Buscar por nombre o email..." aria-label="Buscar usuarios" />
+      <button *ngIf="searchText" type="button" aria-label="Limpiar búsqueda"
+        (click)="searchText = ''; onSearchChange('')">×</button>
+    </label>
+  </div>
+
+  <div class="list-summary">
+    <span *ngIf="!isLoading">{{ firstVisibleResult }}–{{ lastVisibleResult }} de {{ totalCount }} usuarios</span>
+    <span *ngIf="isLoading">Cargando usuarios...</span>
+  </div>
+  <div *ngIf="error" class="notice error-notice" role="alert">{{ error }}</div>
+  <div *ngIf="isLoading && users.length === 0" class="loading-state" aria-live="polite">
+    <span class="spinner"></span>Cargando usuarios...
+  </div>
+  <div *ngIf="!isLoading && !error && users.length === 0" class="empty-state">
+    <span class="empty-icon">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+    </span>
+    <h2>{{ searchText ? 'No se encontraron usuarios' : 'Todavía no hay usuarios' }}</h2>
+    <p>{{ searchText ? 'Prueba con otro nombre o email.' : 'Crea el primer usuario del sistema.' }}</p>
+    <button class="secondary-button" type="button" (click)="openCreateDialog()">Crear usuario</button>
+  </div>
+
+  <div *ngIf="users.length > 0" class="table-wrap">
+    <table>
+      <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let user of users">
+          <td><strong>{{ fullName(user) }}</strong><small>Usuario #{{ user.id }}</small></td>
+          <td>{{ user.email }}</td>
+          <td><div class="role-list"><span *ngFor="let role of user.roles" class="role-badge">{{ roleLabel(role) }}</span>
+            <span *ngIf="user.roles.length === 0" class="muted">Sin rol</span></div></td>
+          <td><span class="status-badge" [class.inactive]="!user.isActive">
+            {{ user.isActive ? 'Activo' : 'Inactivo' }}</span></td>
+          <td class="actions">
+            <button type="button" class="icon-button" aria-label="Ver usuario" title="Ver datos"
+              (click)="openDetailsDialog(user)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" /></svg>
+            </button>
+            <button type="button" class="icon-button" aria-label="Editar usuario" title="Editar"
+              (click)="openEditDialog(user)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5 5 5M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" /></svg>
+            </button>
+            <button type="button" class="icon-button danger-icon"
+              [attr.aria-label]="user.isActive ? 'Eliminar usuario' : 'Reactivar usuario'"
+              [title]="user.isActive ? 'Eliminar (desactivar)' : 'Reactivar'"
+              (click)="openStatusDialog(user)">
+              <svg *ngIf="user.isActive" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" /></svg>
+              <svg *ngIf="!user.isActive" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5m-4 0a7 7 0 0 1 12-4l3 4m-16 0 3 4a7 7 0 0 0 12-4" /></svg>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer *ngIf="totalPages > 1" class="pagination">
+    <span>Página {{ currentPage }} de {{ totalPages }}</span>
+    <div>
+      <button type="button" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">Anterior</button>
+      <button type="button" [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">Siguiente</button>
+    </div>
+  </footer>
+</section>
+
+<div *ngIf="modal" class="modal-backdrop" (click)="closeDialog()">
+  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-title"
+    (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <div>
+        <p class="eyebrow">{{ modal === 'details' ? 'INFORMACIÓN DEL USUARIO' : 'ADMINISTRACIÓN DEL SISTEMA' }}</p>
+        <h2 id="user-modal-title">{{ modal === 'create' ? 'Nuevo usuario' :
+          modal === 'edit' ? 'Editar usuario' : modal === 'status' ?
+          (selectedUser?.isActive ? 'Eliminar usuario' : 'Reactivar usuario') :
+          modal === 'role' ? 'Crear rol' : 'Datos del usuario' }}</h2>
+      </div>
+      <button type="button" class="modal-close" aria-label="Cerrar" [disabled]="isSaving" (click)="closeDialog()">×</button>
+    </header>
+
+    <div *ngIf="modalError" class="notice error-notice" role="alert">{{ modalError }}</div>
+
+    <ng-container *ngIf="modal === 'details'">
+      <div *ngIf="!selectedUser && !modalError" class="modal-loading">Cargando datos...</div>
+      <ng-container *ngIf="selectedUser as user">
+        <dl class="detail-grid">
+          <div><dt>Nombre</dt><dd>{{ fullName(user) }}</dd></div>
+          <div><dt>Estado</dt><dd>{{ user.isActive ? 'Activo' : 'Inactivo' }}</dd></div>
+          <div><dt>Correo electrónico</dt><dd>{{ user.email }}</dd></div>
+          <div><dt>Teléfono</dt><dd>{{ user.phoneNumber || '—' }}</dd></div>
+          <div><dt>Roles asignados</dt><dd>{{ user.roles.length ? formatRoles(user.roles) : 'Sin rol' }}</dd></div>
+          <div><dt>Creado</dt><dd>{{ user.createdAt | date:'mediumDate' }}</dd></div>
+        </dl>
+        <section class="role-change">
+          <div><h3>Cambiar rol</h3><p>El nuevo rol reemplazará los roles actuales.</p></div>
+          <div class="role-change-controls">
+            <select name="userRole" [(ngModel)]="selectedRoleId" [disabled]="isLoadingRoles || isSaving">
+              <option [ngValue]="null" disabled>Selecciona un rol</option>
+              <option *ngFor="let role of activeRoles" [ngValue]="role.id">{{ roleLabel(role.name) }}</option>
+            </select>
+            <button type="button" class="secondary-button" [disabled]="!selectedRoleId || isSaving"
+              (click)="changeUserRole()">Guardar rol</button>
+          </div>
+          <p *ngIf="roleError" class="field-error" role="alert">{{ roleError }}</p>
+          <p *ngIf="activeRoles.length === 0 && !isLoadingRoles" class="field-error">
+            Crea o activa un rol antes de asignarlo.
+          </p>
+        </section>
+        <footer class="modal-footer">
+          <button type="button" class="secondary-button" (click)="closeDialog()">Cerrar</button>
+          <button type="button" class="primary-button" (click)="openEditDialog(user)">Editar datos</button>
+          <button type="button" class="danger-button" (click)="openStatusDialog(user)">
+            {{ user.isActive ? 'Eliminar' : 'Reactivar' }}
+          </button>
+        </footer>
+      </ng-container>
+    </ng-container>
+
+    <form *ngIf="modal === 'create' || modal === 'edit'" #userForm="ngForm"
+      class="entity-form" (ngSubmit)="submitUser(userForm.valid === true)">
+      <div class="form-row">
+        <label class="form-field"><span>Nombre <b>*</b></span>
+          <input name="firstName" [(ngModel)]="form.firstName" maxlength="100" required />
+        </label>
+        <label class="form-field"><span>Apellido <b>*</b></span>
+          <input name="lastName" [(ngModel)]="form.lastName" maxlength="100" required />
+        </label>
+      </div>
+      <label class="form-field"><span>Email <b>*</b></span>
+        <input type="email" name="email" [(ngModel)]="form.email" maxlength="320" required
+          [readonly]="modal === 'edit'" />
+      </label>
+      <label *ngIf="modal === 'create'" class="form-field"><span>Contraseña <b>*</b></span>
+        <input type="password" name="password" [(ngModel)]="form.password" minlength="12"
+          maxlength="128" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}" required />
+        <small class="field-hint">Mínimo 12 caracteres, con mayúscula, minúscula, número y símbolo.</small>
+      </label>
+      <label class="form-field"><span>Teléfono</span>
+        <input type="tel" name="phoneNumber" [(ngModel)]="form.phoneNumber" maxlength="30" />
+      </label>
+      <p class="form-hint" *ngIf="modal === 'create'">
+        El usuario se creará activo con el rol predeterminado Usuario. Podrás asignar otro rol desde sus detalles.
+      </p>
+      <p class="form-hint" *ngIf="modal === 'edit'">
+        El correo y la contraseña no pueden modificarse desde este formulario.
+      </p>
+      <footer class="modal-footer">
+        <button type="button" class="secondary-button" [disabled]="isSaving" (click)="closeDialog()">Cancelar</button>
+        <button type="submit" class="primary-button" [disabled]="isSaving">
+          {{ isSaving ? 'Guardando...' : modal === 'edit' ? 'Guardar cambios' : 'Crear usuario' }}
+        </button>
+      </footer>
+    </form>
+
+    <form *ngIf="modal === 'role'" #roleFormElement="ngForm"
+      class="entity-form" (ngSubmit)="submitRole(roleFormElement.valid === true)">
+      <label class="form-field"><span>Nombre del rol <b>*</b></span>
+        <input name="roleName" [(ngModel)]="roleForm.name" minlength="2" maxlength="50" required />
+      </label>
+      <label class="form-field"><span>Descripción</span>
+        <textarea name="roleDescription" [(ngModel)]="roleForm.description" maxlength="250" rows="3"></textarea>
+      </label>
+      <p class="form-hint">Los roles de sistema Administrador y Usuario no se pueden reemplazar ni desactivar.</p>
+      <footer class="modal-footer">
+        <button type="button" class="secondary-button" [disabled]="isSaving" (click)="closeDialog()">Cancelar</button>
+        <button type="submit" class="primary-button" [disabled]="isSaving">
+          {{ isSaving ? 'Creando...' : 'Crear rol' }}
+        </button>
+      </footer>
+    </form>
+
+    <div *ngIf="modal === 'status'" class="confirmation">
+      <p *ngIf="selectedUser?.isActive">
+        ¿Deseas eliminar a <strong>{{ selectedUser ? fullName(selectedUser) : '' }}</strong>?
+      </p>
+      <p *ngIf="selectedUser?.isActive" class="form-hint">
+        La API no ofrece eliminación física: se desactivará la cuenta y se invalidarán sus sesiones para mantener el historial.
+      </p>
+      <p *ngIf="!selectedUser?.isActive">
+        ¿Deseas reactivar a <strong>{{ selectedUser ? fullName(selectedUser) : '' }}</strong>?
+      </p>
+      <footer class="modal-footer">
+        <button type="button" class="secondary-button" [disabled]="isSaving" (click)="closeDialog()">Cancelar</button>
+        <button type="button" [class.danger-button]="selectedUser?.isActive"
+          [class.primary-button]="!selectedUser?.isActive" [disabled]="isSaving" (click)="confirmStatusChange()">
+          {{ isSaving ? 'Procesando...' : selectedUser?.isActive ? 'Eliminar' : 'Reactivar' }}
+        </button>
+      </footer>
+    </div>
+  </section>
+</div>

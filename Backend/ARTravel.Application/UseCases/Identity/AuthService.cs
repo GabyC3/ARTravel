@@ -303,14 +303,14 @@ public sealed class AuthService(
     internal static void ValidatePassword(string password)
     {
         if (string.IsNullOrEmpty(password) ||
-            password.Length < 12 ||
+            password.Length < 8 ||
             !password.Any(char.IsUpper) ||
             !password.Any(char.IsLower) ||
             !password.Any(char.IsDigit) ||
             !password.Any(character => !char.IsLetterOrDigit(character)))
         {
             throw new ArgumentException(
-                "Password must be at least 12 characters and include uppercase, lowercase, a number, and a symbol.");
+                "Password must be at least 8 characters and include uppercase, lowercase, a number, and a symbol.");
         }
     }
 }

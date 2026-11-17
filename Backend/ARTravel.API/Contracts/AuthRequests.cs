@@ -13,9 +13,9 @@ public sealed class RegisterRequest
     [Required, EmailAddress, StringLength(320)]
     public string Email { get; init; } = string.Empty;
 
-    [Required, StringLength(128, MinimumLength = 12)]
+    [Required, StringLength(128, MinimumLength = 8)]
     [RegularExpression(
-        @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$",
+        @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$",
         ErrorMessage = "Password must include uppercase, lowercase, a number, and a symbol.")]
     public string Password { get; init; } = string.Empty;
 
@@ -49,9 +49,9 @@ public sealed class ResetPasswordRequest
     [Required, StringLength(256, MinimumLength = 32)]
     public string Token { get; init; } = string.Empty;
 
-    [Required, StringLength(128, MinimumLength = 12)]
+    [Required, StringLength(128, MinimumLength = 8)]
     [RegularExpression(
-        @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$",
+        @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$",
         ErrorMessage = "Password must include uppercase, lowercase, a number, and a symbol.")]
     public string NewPassword { get; init; } = string.Empty;
 }
@@ -61,9 +61,9 @@ public sealed class ChangePasswordRequest
     [Required, StringLength(128)]
     public string CurrentPassword { get; init; } = string.Empty;
 
-    [Required, StringLength(128, MinimumLength = 12)]
+    [Required, StringLength(128, MinimumLength = 8)]
     [RegularExpression(
-        @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$",
+        @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$",
         ErrorMessage = "Password must include uppercase, lowercase, a number, and a symbol.")]
     public string NewPassword { get; init; } = string.Empty;
 }

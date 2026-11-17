@@ -1,0 +1,233 @@
+<div *ngIf="toastMessage" class="toast" [class.toast-error]="toastType === 'error'"
+  [class.toast-success]="toastType === 'success'" [attr.role]="toastType === 'error' ? 'alert' : 'status'">
+  <span>{{ toastMessage }}</span>
+  <button type="button" aria-label="Cerrar notificación" (click)="clearToast()">×</button>
+</div>
+
+<section class="clients-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">GESTIÓN DE CONTACTOS</p>
+      <h1>Clientes</h1>
+    </div>
+    <button class="primary-button" type="button" (click)="openCreateDialog()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      Nuevo cliente
+    </button>
+  </header>
+
+  <div class="toolbar">
+    <label class="search-box">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m16 16 4 4" />
+      </svg>
+      <input type="search" name="customerSearch" [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange($event)"
+        placeholder="Buscar por nombre, documento o email..." aria-label="Buscar clientes" />
+      <button *ngIf="searchText" type="button" aria-label="Limpiar búsqueda"
+        (click)="searchText = ''; onSearchChange('')">×</button>
+    </label>
+    <div class="filter-wrap">
+      <button class="filter-button" type="button" [attr.aria-expanded]="isFilterOpen"
+        (click)="isFilterOpen = !isFilterOpen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6.5 7.5V19l-3 1v-7.5L4 5Z" /></svg>
+        Filtros
+        <span *ngIf="statusFilter !== 'all'" class="filter-indicator"></span>
+      </button>
+      <div *ngIf="isFilterOpen" class="filter-panel">
+        <strong>Estado del cliente</strong>
+        <button *ngFor="let filter of statusFilters" type="button"
+          [class.selected]="statusFilter === filter.value"
+          (click)="setStatusFilter(filter.value)">
+          {{ filter.label }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="list-summary">
+    <span *ngIf="!isLoading">{{ firstVisibleResult }}–{{ lastVisibleResult }} de {{ totalCount }} clientes</span>
+    <span *ngIf="isLoading">Cargando clientes...</span>
+  </div>
+  <div *ngIf="error" class="notice error-notice" role="alert">{{ error }}</div>
+  <div *ngIf="isLoading && customers.length === 0" class="loading-state" aria-live="polite">
+    <span class="spinner"></span>Cargando clientes...
+  </div>
+  <div *ngIf="!isLoading && !error && customers.length === 0" class="empty-state">
+    <span class="empty-icon">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    </span>
+    <h2>{{ searchText ? 'No se encontraron clientes' : 'Todavía no hay clientes' }}</h2>
+    <p>{{ searchText ? 'Prueba con otro nombre, documento o email.' : 'Registra el primer cliente para comenzar.' }}</p>
+    <button class="secondary-button" type="button" (click)="openCreateDialog()">Crear cliente</button>
+  </div>
+
+  <div *ngIf="customers.length > 0" class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Nombre</th><th>Documento</th><th>Email</th><th>Estado</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let customer of customers">
+          <td><strong>{{ customerName(customer) }}</strong><small>{{ customerTypeLabel(customer.customerType) }}</small></td>
+          <td>{{ customer.documentType }} {{ customer.documentNumber }}</td>
+          <td>{{ customer.email || '—' }}</td>
+          <td><span class="status-badge" [class.inactive]="!customer.isActive">
+            {{ customer.isActive ? 'Activo' : 'Inactivo' }}
+          </span></td>
+          <td class="actions">
+            <button type="button" class="icon-button" aria-label="Ver cliente"
+              title="Ver datos" (click)="openDetailsDialog(customer)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" /></svg>
+            </button>
+            <button type="button" class="icon-button" aria-label="Editar cliente"
+              title="Editar" (click)="openEditDialog(customer)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5 5 5M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" /></svg>
+            </button>
+            <button type="button" class="icon-button danger-icon"
+              [attr.aria-label]="customer.isActive ? 'Eliminar cliente' : 'Reactivar cliente'"
+              [title]="customer.isActive ? 'Eliminar (desactivar)' : 'Reactivar'"
+              (click)="openStatusDialog(customer)">
+              <svg *ngIf="customer.isActive" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" /></svg>
+              <svg *ngIf="!customer.isActive" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5m-4 0a7 7 0 0 1 12-4l3 4m-16 0 3 4a7 7 0 0 0 12-4" /></svg>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer *ngIf="totalPages > 1" class="pagination">
+    <span>Página {{ currentPage }} de {{ totalPages }}</span>
+    <div>
+      <button type="button" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">Anterior</button>
+      <button type="button" [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">Siguiente</button>
+    </div>
+  </footer>
+</section>
+
+<div *ngIf="modal" class="modal-backdrop" (click)="closeDialog()">
+  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="customer-modal-title"
+    (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <div>
+        <p class="eyebrow">{{ modal === 'details' ? 'INFORMACIÓN DEL CLIENTE' : 'GESTIÓN DE CLIENTES' }}</p>
+        <h2 id="customer-modal-title">{{ modal === 'create' ? 'Nuevo cliente' :
+          modal === 'edit' ? 'Editar cliente' : modal === 'deactivate' ? 'Eliminar cliente' :
+          modal === 'activate' ? 'Reactivar cliente' : 'Datos del cliente' }}</h2>
+      </div>
+      <button type="button" class="modal-close" aria-label="Cerrar" [disabled]="isSaving" (click)="closeDialog()">×</button>
+    </header>
+
+    <div *ngIf="modalError" class="notice error-notice" role="alert">{{ modalError }}</div>
+
+    <ng-container *ngIf="modal === 'details'">
+      <div *ngIf="!selectedCustomer && !modalError" class="modal-loading">Cargando datos...</div>
+      <ng-container *ngIf="selectedCustomer as customer">
+        <dl class="detail-grid">
+          <div><dt>Tipo de cliente</dt><dd>{{ customerTypeLabel(customer.customerType) }}</dd></div>
+          <div><dt>Estado</dt><dd>{{ customer.isActive ? 'Activo' : 'Inactivo' }}</dd></div>
+          <div><dt>Nombre</dt><dd>{{ customerName(customer) }}</dd></div>
+          <div><dt>Documento</dt><dd>{{ customer.documentType }} {{ customer.documentNumber }}</dd></div>
+          <div><dt>Email</dt><dd>{{ customer.email || '—' }}</dd></div>
+          <div><dt>Teléfono</dt><dd>{{ customer.phoneNumber || '—' }}</dd></div>
+          <div><dt>Dirección</dt><dd>{{ customer.address || '—' }}</dd></div>
+          <div><dt>Ciudad / País</dt><dd>{{ customer.city || '—' }} / {{ customer.country || '—' }}</dd></div>
+          <div class="full-row"><dt>Notas</dt><dd>{{ customer.notes || '—' }}</dd></div>
+        </dl>
+        <footer class="modal-footer">
+          <button type="button" class="secondary-button" (click)="closeDialog()">Cerrar</button>
+          <button type="button" class="primary-button" (click)="openEditDialog(customer)">Editar datos</button>
+          <button type="button" class="danger-button" (click)="openStatusDialog(customer)">
+            {{ customer.isActive ? 'Eliminar' : 'Reactivar' }}
+          </button>
+        </footer>
+      </ng-container>
+    </ng-container>
+
+    <form *ngIf="modal === 'create' || modal === 'edit'" #customerForm="ngForm"
+      class="customer-form" (ngSubmit)="submit(customerForm.valid === true)">
+      <label class="form-field">
+        <span>Tipo de cliente <b>*</b></span>
+        <select name="customerType" [(ngModel)]="form.customerType" required>
+          <option [ngValue]="customerTypes.Individual">Persona</option>
+          <option [ngValue]="customerTypes.Organization">Empresa</option>
+        </select>
+      </label>
+      <div *ngIf="form.customerType === customerTypes.Individual" class="form-row">
+        <label class="form-field"><span>Nombre <b>*</b></span>
+          <input name="firstName" [(ngModel)]="form.firstName" maxlength="100" required />
+        </label>
+        <label class="form-field"><span>Apellido <b>*</b></span>
+          <input name="lastName" [(ngModel)]="form.lastName" maxlength="100" required />
+        </label>
+      </div>
+      <label *ngIf="form.customerType === customerTypes.Organization" class="form-field">
+        <span>Razón social <b>*</b></span>
+        <input name="businessName" [(ngModel)]="form.businessName" maxlength="200" required />
+      </label>
+      <div class="form-row">
+        <label class="form-field"><span>Tipo de documento <b>*</b></span>
+          <select name="documentType" [(ngModel)]="form.documentType" required>
+            <option value="DNI">DNI</option><option value="Pasaporte">Pasaporte</option>
+            <option value="CUIT">CUIT</option><option value="Otro">Otro</option>
+          </select>
+        </label>
+        <label class="form-field"><span>N° de documento / pasaporte <b>*</b></span>
+          <input name="documentNumber" [(ngModel)]="form.documentNumber" maxlength="100" required />
+        </label>
+      </div>
+      <div class="form-row">
+        <label class="form-field"><span>Email</span>
+          <input type="email" name="email" [(ngModel)]="form.email" maxlength="320" />
+        </label>
+        <label class="form-field"><span>Teléfono</span>
+          <input type="tel" name="phoneNumber" [(ngModel)]="form.phoneNumber" maxlength="30" />
+        </label>
+      </div>
+      <label class="form-field"><span>Dirección</span>
+        <input name="address" [(ngModel)]="form.address" maxlength="250" />
+      </label>
+      <div class="form-row">
+        <label class="form-field"><span>Ciudad</span>
+          <input name="city" [(ngModel)]="form.city" maxlength="100" />
+        </label>
+        <label class="form-field"><span>País</span>
+          <input name="country" [(ngModel)]="form.country" maxlength="100" />
+        </label>
+      </div>
+      <label class="form-field"><span>Notas</span>
+        <textarea name="notes" [(ngModel)]="form.notes" maxlength="2000" rows="2"></textarea>
+      </label>
+      <p class="form-hint"><b>*</b> Campos obligatorios. Al eliminar, el cliente se desactiva para conservar su historial.</p>
+      <footer class="modal-footer">
+        <button type="button" class="secondary-button" [disabled]="isSaving" (click)="closeDialog()">Cancelar</button>
+        <button type="submit" class="primary-button" [disabled]="isSaving">
+          {{ isSaving ? 'Guardando...' : modal === 'edit' ? 'Guardar cambios' : 'Crear cliente' }}
+        </button>
+      </footer>
+    </form>
+
+    <div *ngIf="modal === 'deactivate' || modal === 'activate'" class="confirmation">
+      <p *ngIf="modal === 'deactivate'">
+        ¿Deseas eliminar a <strong>{{ selectedCustomer ? customerName(selectedCustomer) : '' }}</strong>?
+      </p>
+      <p *ngIf="modal === 'deactivate'" class="form-hint">
+        El cliente se desactivará y conservará su historial de reservas.
+      </p>
+      <p *ngIf="modal === 'activate'">
+        ¿Deseas reactivar a <strong>{{ selectedCustomer ? customerName(selectedCustomer) : '' }}</strong>?
+      </p>
+      <footer class="modal-footer">
+        <button type="button" class="secondary-button" [disabled]="isSaving" (click)="closeDialog()">Cancelar</button>
+        <button type="button" [class.danger-button]="modal === 'deactivate'"
+          [class.primary-button]="modal === 'activate'" [disabled]="isSaving" (click)="confirmStatusChange()">
+          {{ isSaving ? 'Procesando...' : modal === 'deactivate' ? 'Eliminar' : 'Reactivar' }}
+        </button>
+      </footer>
+    </div>
+  </section>
+</div>

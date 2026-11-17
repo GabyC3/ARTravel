@@ -23,8 +23,9 @@ public sealed class EfIdentityStore(AppDbContext dbContext) : IIdentityStore
     public async Task<IReadOnlyList<User>> ListUsersAsync(
         int skip,
         int take,
+        string? search,
         CancellationToken cancellationToken) =>
-        await dbContext.Users
+        await FilterUsers(search)
             .AsNoTracking()
             .Include(user => user.UserRoles)
             .ThenInclude(userRole => userRole.Role)
@@ -33,8 +34,23 @@ public sealed class EfIdentityStore(AppDbContext dbContext) : IIdentityStore
             .Take(take)
             .ToListAsync(cancellationToken);
 
-    public Task<int> CountUsersAsync(CancellationToken cancellationToken) =>
-        dbContext.Users.CountAsync(cancellationToken);
+    public Task<int> CountUsersAsync(string? search, CancellationToken cancellationToken) =>
+        FilterUsers(search).CountAsync(cancellationToken);
+
+    private IQueryable<User> FilterUsers(string? search)
+    {
+        var query = dbContext.Users.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var pattern = $"%{search.Trim()}%";
+            query = query.Where(user =>
+                EF.Functions.ILike(user.FirstName, pattern) ||
+                EF.Functions.ILike(user.LastName, pattern) ||
+                EF.Functions.ILike(user.Email, pattern));
+        }
+
+        return query;
+    }
 
     public Task<Role?> FindRoleByIdAsync(int roleId, CancellationToken cancellationToken) =>
         dbContext.Roles.SingleOrDefaultAsync(role => role.Id == roleId, cancellationToken);

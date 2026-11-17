@@ -61,7 +61,8 @@ public sealed record TourismProductResponse(
     bool IsPublished,
     bool IsActive,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    string? PrimaryImageUrl = null);
 
 public sealed record ProductDetail(
     TourismProductResponse Product,
@@ -77,7 +78,8 @@ public sealed record ProductDestinationResponse(
     string DestinationName,
     string Country,
     string? City,
-    DestinationType DestinationType);
+    DestinationType DestinationType,
+    string? Province = null);
 
 public sealed record ProductImageResponse(
     int Id,

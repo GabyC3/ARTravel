@@ -8,7 +8,7 @@ namespace ARTravel.API.Controllers;
 
 [ApiController]
 [Route("api/itineraries")]
-[Authorize(Policy = "Administrator")]
+[Authorize(Policy = "StaffRead")]
 public sealed class ItinerariesController(IItineraryService itineraryService) : ControllerBase
 {
     [HttpGet]
@@ -36,6 +36,7 @@ public sealed class ItinerariesController(IItineraryService itineraryService) : 
         Ok(await itineraryService.GetAsync(id, cancellationToken));
 
     [HttpPost]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<ItineraryDetailResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<ItineraryDetailResponse>> CreateItinerary(
         CreateItineraryRequest request,
@@ -54,6 +55,7 @@ public sealed class ItinerariesController(IItineraryService itineraryService) : 
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<ItineraryDetailResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ItineraryDetailResponse>> UpdateItinerary(
         int id,
@@ -68,6 +70,7 @@ public sealed class ItinerariesController(IItineraryService itineraryService) : 
             cancellationToken));
 
     [HttpPatch("{id:int}/status")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<ItineraryResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ItineraryResponse>> UpdateItineraryStatus(
         int id,
@@ -79,6 +82,7 @@ public sealed class ItinerariesController(IItineraryService itineraryService) : 
             cancellationToken));
 
     [HttpPost("{id:int}/duplicate")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<ItineraryDetailResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<ItineraryDetailResponse>> DuplicateItinerary(
         int id,
@@ -99,6 +103,7 @@ public sealed class ItinerariesController(IItineraryService itineraryService) : 
         Ok(await itineraryService.GetDaysAsync(id, cancellationToken));
 
     [HttpPost("{id:int}/days")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<ItineraryDayResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<ItineraryDayResponse>> AddItineraryDay(
         int id,
@@ -113,6 +118,7 @@ public sealed class ItinerariesController(IItineraryService itineraryService) : 
     }
 
     [HttpPut("{id:int}/days/{dayId:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<ItineraryDayResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ItineraryDayResponse>> UpdateItineraryDay(
         int id,
@@ -126,6 +132,7 @@ public sealed class ItinerariesController(IItineraryService itineraryService) : 
             cancellationToken));
 
     [HttpDelete("{id:int}/days/{dayId:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RemoveItineraryDay(
         int id,
@@ -137,6 +144,7 @@ public sealed class ItinerariesController(IItineraryService itineraryService) : 
     }
 
     [HttpPatch("{id:int}/days/reorder")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ReorderItineraryDays(
         int id,

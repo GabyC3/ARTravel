@@ -14,7 +14,8 @@ public sealed record CreateDestinationCommand(
     decimal? Longitude,
     int? AltitudeMeters,
     int? ParentDestinationId,
-    bool IsActive);
+    bool IsActive,
+    IReadOnlyList<string> ImageUrls);
 
 public sealed record UpdateDestinationCommand(
     string Name,
@@ -50,7 +51,8 @@ public sealed record DestinationResponse(
     int? ParentDestinationId,
     bool IsActive,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    string? PrimaryImageUrl);
 
 public sealed record DestinationDetail(
     DestinationResponse Destination,

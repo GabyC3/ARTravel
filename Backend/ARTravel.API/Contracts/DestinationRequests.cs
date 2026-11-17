@@ -37,6 +37,9 @@ public sealed class CreateDestinationRequest
     [Range(1, int.MaxValue)]
     public int? ParentDestinationId { get; init; }
 
+    [MaxLength(10)]
+    public IReadOnlyList<string> ImageUrls { get; init; } = Array.Empty<string>();
+
     public bool IsActive { get; init; } = true;
 }
 

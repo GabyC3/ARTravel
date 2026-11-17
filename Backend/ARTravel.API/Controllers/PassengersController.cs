@@ -8,7 +8,7 @@ namespace ARTravel.API.Controllers;
 
 [ApiController]
 [Route("api/passengers")]
-[Authorize(Policy = "Administrator")]
+[Authorize(Policy = "StaffRead")]
 public sealed class PassengersController(IContactService contactService) : ControllerBase
 {
     [HttpGet]
@@ -34,6 +34,7 @@ public sealed class PassengersController(IContactService contactService) : Contr
         Ok(await contactService.GetPassengerAsync(id, cancellationToken));
 
     [HttpPost]
+    [Authorize(Policy = "PassengerManagement")]
     [ProducesResponseType<PassengerResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<PassengerResponse>> CreatePassenger(
         CreatePassengerRequest request,
@@ -59,6 +60,7 @@ public sealed class PassengersController(IContactService contactService) : Contr
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Policy = "PassengerManagement")]
     [ProducesResponseType<PassengerResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<PassengerResponse>> UpdatePassenger(
         int id,
@@ -82,6 +84,7 @@ public sealed class PassengersController(IContactService contactService) : Contr
             cancellationToken));
 
     [HttpPatch("{id:int}/status")]
+    [Authorize(Policy = "PassengerManagement")]
     [ProducesResponseType<PassengerResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<PassengerResponse>> UpdatePassengerStatus(
         int id,

@@ -1,0 +1,272 @@
+<div *ngIf="toastMessage" class="toast" [class.toast-error]="toastType === 'error'"
+  [class.toast-success]="toastType === 'success'" [attr.role]="toastType === 'error' ? 'alert' : 'status'">
+  <span>{{ toastMessage }}</span>
+  <button type="button" aria-label="Cerrar notificación" (click)="clearToast()">×</button>
+</div>
+
+<section class="reservations-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">OPERACIÓN TURÍSTICA</p>
+      <h1>Reservas</h1>
+      <p class="page-description">Gestiona reservas, pasajeros y salidas.</p>
+    </div>
+    <button class="primary-button" type="button" (click)="openCreateDialog()">
+      <span aria-hidden="true">＋</span>
+      Nueva Reserva
+    </button>
+  </header>
+
+  <div class="toolbar">
+    <label class="search-box">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4" /></svg>
+      <input type="search" name="reservationSearch" [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange($event)"
+        placeholder="Buscar por N° de reserva o cliente..." aria-label="Buscar reservas" />
+      <button *ngIf="searchText" type="button" class="clear-search" aria-label="Limpiar búsqueda"
+        (click)="searchText = ''; onSearchChange('')">×</button>
+    </label>
+
+    <div class="filter-wrap">
+      <button class="filter-button" type="button" [attr.aria-expanded]="isFilterOpen"
+        (click)="isFilterOpen = !isFilterOpen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6.5 7.5V19l-3 1v-7.5L4 5Z" /></svg>
+        Estado
+      </button>
+      <div class="filter-panel" *ngIf="isFilterOpen">
+        <button *ngFor="let filter of statusFilters" type="button"
+          [class.selected]="statusFilter === filter.value" (click)="setStatusFilter(filter.value)">
+          {{ filter.label }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="list-summary">
+    <span *ngIf="!isLoading">{{ firstVisibleResult }}–{{ lastVisibleResult }} de {{ totalCount }} reservas</span>
+    <span *ngIf="isLoading">Cargando reservas...</span>
+  </div>
+  <div *ngIf="error" class="notice error-notice" role="alert">{{ error }}</div>
+  <div *ngIf="isLoading && reservations.length === 0" class="loading-state" aria-live="polite">
+    <span class="spinner"></span> Cargando reservas...
+  </div>
+
+  <div *ngIf="!isLoading && !error && reservations.length === 0" class="empty-state">
+    <span class="empty-icon" aria-hidden="true">▣</span>
+    <h2>{{ searchText ? 'No se encontraron reservas' : 'Todavía no hay reservas' }}</h2>
+    <p>{{ searchText ? 'Prueba con otro número de reserva o nombre de cliente.' : 'Crea una reserva para comenzar a gestionar pasajeros y salidas.' }}</p>
+    <button class="secondary-button" type="button" (click)="openCreateDialog()">Crear reserva</button>
+  </div>
+
+  <div *ngIf="reservations.length > 0" class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>N° Reserva</th><th>Cliente</th><th>Salida</th><th>Pasajeros</th><th>Total</th><th>Estado</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let reservation of reservations">
+          <td><strong class="reservation-number">{{ reservation.reservationNumber }}</strong><small>{{ reservation.reservationDate | date:'dd/MM/yyyy' }}</small></td>
+          <td>{{ reservation.customerName }}</td>
+          <td>{{ reservation.departureLabel }}</td>
+          <td>{{ reservation.numberOfPassengers }}</td>
+          <td class="amount">{{ reservation.totalAmount | currency:reservation.currency:'symbol':'1.2-2' }}</td>
+          <td><span class="status-chip" [ngClass]="'status-' + reservation.status">{{ statusLabel(reservation.status) }}</span></td>
+          <td><button class="details-button" type="button" (click)="openDetails(reservation)">Ver detalles</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer class="pagination" *ngIf="totalPages > 1">
+    <span>Página {{ currentPage }} de {{ totalPages }}</span>
+    <div>
+      <button type="button" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">Anterior</button>
+      <button type="button" [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">Siguiente</button>
+    </div>
+  </footer>
+</section>
+
+<div class="modal-backdrop" *ngIf="modal" (click)="closeDialog()">
+  <section class="reservation-modal" role="dialog" aria-modal="true"
+    aria-labelledby="reservation-modal-title" (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <div>
+        <p class="eyebrow">{{ modal === 'create' ? 'NUEVA OPERACIÓN' : 'GESTIÓN DE RESERVA' }}</p>
+        <h2 id="reservation-modal-title">
+          {{ modal === 'create' ? 'Crear reserva' : modal === 'cancel' ? 'Cancelar reserva' : 'Detalle de reserva' }}
+        </h2>
+      </div>
+      <button type="button" class="modal-close" aria-label="Cerrar" [disabled]="isSaving" (click)="closeDialog()">×</button>
+    </header>
+
+    <div *ngIf="modalError" class="notice error-notice modal-notice" role="alert">{{ modalError }}</div>
+
+    <form *ngIf="modal === 'create'" #reservationForm="ngForm" class="reservation-form"
+      (ngSubmit)="saveReservation(reservationForm.valid === true)">
+      <div *ngIf="isLoadingOptions" class="loading-state"><span class="spinner"></span> Cargando opciones...</div>
+      <ng-container *ngIf="!isLoadingOptions">
+        <div class="form-row">
+          <label class="form-field">
+            <span>Cliente <b>*</b></span>
+            <select name="customerId" [(ngModel)]="selectedCustomerId" required>
+              <option [ngValue]="null" disabled>Selecciona un cliente activo</option>
+              <option *ngFor="let customer of customers" [ngValue]="customer.id">
+                {{ customer.customerType === 2 ? customer.businessName : customer.firstName + ' ' + customer.lastName }}
+                · {{ customer.documentNumber }}
+              </option>
+            </select>
+          </label>
+          <label class="form-field">
+            <span>Salida abierta <b>*</b></span>
+            <select name="departureId" [ngModel]="selectedDepartureId"
+              (ngModelChange)="onDepartureChange($event ? +$event : null)" required>
+              <option [ngValue]="null" disabled>Selecciona una salida</option>
+              <option *ngFor="let departure of departures" [ngValue]="departure.id">
+                Salida #{{ departure.id }} · {{ departure.departureDate | date:'dd/MM/yyyy' }} · {{ departure.basePrice | currency:departure.currency:'symbol':'1.0-0' }}
+              </option>
+            </select>
+          </label>
+        </div>
+        <div *ngIf="availability" class="availability-note" role="status">
+          {{ availability.availableSeats }} plazas disponibles · mínimo {{ availability.minimumPassengers }} pasajeros
+        </div>
+
+        <div class="passenger-heading">
+          <div><h3>Pasajeros</h3><p>Los precios se resuelven según la salida seleccionada.</p></div>
+          <button type="button" class="secondary-button compact-button" (click)="addPassengerRow()">＋ Agregar</button>
+        </div>
+        <article class="passenger-form-card" *ngFor="let passenger of formPassengers; let i = index">
+          <div class="passenger-card-heading">
+            <strong>Pasajero {{ i + 1 }}</strong>
+            <button *ngIf="formPassengers.length > 1" type="button" class="text-danger" (click)="removePassengerRow(i)">Quitar</button>
+          </div>
+          <label class="form-field">
+            <span>Perfil global (opcional)</span>
+            <select [ngModel]="passenger.passengerId" [name]="'profile-' + i"
+              (ngModelChange)="selectPassengerProfile(i, $event ? +$event : null)">
+              <option [ngValue]="null">Completar como snapshot manual</option>
+              <option *ngFor="let profile of passengerProfiles" [ngValue]="profile.id">
+                {{ profile.firstName }} {{ profile.lastName }} · {{ profile.documentNumber }}
+              </option>
+            </select>
+          </label>
+          <div class="form-row three-columns">
+            <label class="form-field"><span>Nombre <b>*</b></span><input [name]="'firstName-' + i" [(ngModel)]="passenger.firstName" maxlength="100" required /></label>
+            <label class="form-field"><span>Apellido <b>*</b></span><input [name]="'lastName-' + i" [(ngModel)]="passenger.lastName" maxlength="100" required /></label>
+            <label class="form-field"><span>Tipo de precio</span>
+              <select [name]="'priceType-' + i" [(ngModel)]="passenger.priceType">
+                <option [ngValue]="priceTypes.Standard">General</option>
+                <option [ngValue]="priceTypes.Child">Menor</option>
+                <option [ngValue]="priceTypes.Adult">Adulto</option>
+                <option *ngIf="departurePrices.some(price => price.priceType === priceTypes.Promotional)" [ngValue]="priceTypes.Promotional">Promocional</option>
+              </select>
+            </label>
+          </div>
+          <div class="form-row three-columns">
+            <label class="form-field"><span>Tipo documento <b>*</b></span>
+              <select [name]="'documentType-' + i" [(ngModel)]="passenger.documentType" required>
+                <option *ngFor="let type of documentTypes" [ngValue]="type.value">{{ type.label }}</option>
+              </select>
+            </label>
+            <label class="form-field"><span>N° documento <b>*</b></span><input [name]="'documentNumber-' + i" [(ngModel)]="passenger.documentNumber" maxlength="100" required /></label>
+            <label class="form-field"><span>Fecha de nacimiento</span><input type="date" [name]="'birthDate-' + i" [(ngModel)]="passenger.birthDate" /></label>
+          </div>
+          <div class="form-row">
+            <label class="form-field"><span>Email</span><input type="email" [name]="'email-' + i" [(ngModel)]="passenger.email" maxlength="320" /></label>
+            <label class="form-field"><span>Teléfono</span><input [name]="'phone-' + i" [(ngModel)]="passenger.phoneNumber" maxlength="30" /></label>
+          </div>
+        </article>
+
+        <div class="form-row">
+          <label class="form-field"><span>Descuento</span><input type="number" name="discount" [(ngModel)]="discount" min="0" step="0.01" /></label>
+          <label class="form-field"><span>Notas</span><input name="notes" [(ngModel)]="notes" maxlength="2000" /></label>
+        </div>
+        <label class="check-field"><input type="checkbox" name="includeConfirmation" [(ngModel)]="includeConfirmation" />
+          <span>Intentar confirmar si la salida alcanza el mínimo requerido</span>
+        </label>
+        <p class="form-hint">La reserva se crea pendiente. La capacidad y los precios se validan nuevamente en el servidor.</p>
+      </ng-container>
+      <footer class="modal-footer">
+        <button type="button" class="secondary-button" [disabled]="isSaving" (click)="closeDialog()">Cancelar</button>
+        <button type="submit" class="primary-button" [disabled]="isSaving || isLoadingOptions">
+          {{ isSaving ? 'Guardando...' : 'Crear reserva' }}
+        </button>
+      </footer>
+    </form>
+
+    <div *ngIf="modal === 'details'" class="reservation-details">
+      <div *ngIf="isLoadingDetail" class="loading-state"><span class="spinner"></span> Cargando detalle...</div>
+      <ng-container *ngIf="selectedDetail as detail">
+        <div class="detail-title-row">
+          <div><h3>{{ detail.reservation.reservationNumber }}</h3><p>Cliente #{{ detail.reservation.customerId }} · Salida #{{ detail.reservation.departureId }}</p></div>
+          <span class="status-chip" [ngClass]="'status-' + detail.reservation.status">{{ statusLabel(detail.reservation.status) }}</span>
+        </div>
+        <dl class="detail-grid">
+          <div><dt>Fecha de reserva</dt><dd>{{ detail.reservation.reservationDate | date:'dd/MM/yyyy HH:mm' }}</dd></div>
+          <div><dt>Pasajeros</dt><dd>{{ detail.reservation.numberOfPassengers }}</dd></div>
+          <div><dt>Subtotal</dt><dd>{{ detail.reservation.subtotal | currency:detail.reservation.currency:'symbol':'1.2-2' }}</dd></div>
+          <div><dt>Descuento</dt><dd>{{ detail.reservation.discount | currency:detail.reservation.currency:'symbol':'1.2-2' }}</dd></div>
+          <div><dt>Total</dt><dd class="amount">{{ detail.reservation.totalAmount | currency:detail.reservation.currency:'symbol':'1.2-2' }}</dd></div>
+          <div><dt>Pagos registrados</dt><dd>{{ paidAmount | currency:detail.reservation.currency:'symbol':'1.2-2' }}</dd></div>
+          <div class="full-row"><dt>Pasajeros y precios aplicados</dt>
+            <dd *ngIf="detail.passengers.length === 0">Aún no hay pasajeros asociados.</dd>
+            <ul class="passenger-list">
+              <li *ngFor="let passenger of detail.passengers">
+                <span><strong>{{ passenger.firstName }} {{ passenger.lastName }}</strong><small>{{ passenger.documentNumber }} · {{ priceTypeLabel(passenger.priceType) }}</small></span>
+                <span>{{ passenger.unitPrice | currency:passenger.currency:'symbol':'1.2-2' }}
+                  <button *ngIf="passenger.passengerId" type="button" class="text-link" (click)="loadPassengerTrips(passenger.passengerId)">Historial</button>
+                </span>
+              </li>
+            </ul>
+          </div>
+          <div class="full-row" *ngIf="passengerTrips.length > 0"><dt>Historial de viajes del perfil seleccionado</dt>
+            <ul class="payment-list">
+              <li *ngFor="let trip of passengerTrips">
+                {{ trip.origin }} → {{ trip.destination }} · {{ trip.departureAt | date:'dd/MM/yyyy' }} · {{ trip.status }}
+              </li>
+            </ul>
+          </div>
+          <div class="full-row"><dt>Pagos (solo lectura)</dt>
+            <dd *ngIf="payments.length === 0">No hay pagos registrados.</dd>
+            <ul *ngIf="payments.length > 0" class="payment-list">
+              <li *ngFor="let payment of payments">
+                {{ payment.amount | currency:payment.currency:'symbol':'1.2-2' }} · {{ payment.paymentMethod }} · {{ payment.status === 2 ? 'Pagado' : payment.status === 4 ? 'Reembolsado' : 'Pendiente/Fallido' }}
+              </li>
+            </ul>
+          </div>
+        </dl>
+        <section class="edit-reservation-fields" *ngIf="detail.reservation.status === statuses.Pending">
+          <h3>Notas y descuento</h3>
+          <div class="form-row">
+            <label class="form-field"><span>Descuento</span><input type="number" [(ngModel)]="discount" min="0" [max]="detail.reservation.subtotal" step="0.01" /></label>
+            <label class="form-field"><span>Notas</span><input [(ngModel)]="notes" maxlength="2000" /></label>
+          </div>
+        </section>
+        <section class="manifest-section" *ngIf="manifest.length > 0">
+          <h3>Manifiesto de la salida</h3>
+          <p *ngFor="let person of manifest">{{ person.firstName }} {{ person.lastName }} · {{ person.reservationNumber }}</p>
+        </section>
+        <footer class="modal-footer details-footer">
+          <button type="button" class="secondary-button" (click)="loadManifest()">Consultar manifiesto</button>
+          <button *ngIf="detail.reservation.status === statuses.Pending" type="button" class="secondary-button"
+            [disabled]="isSaving" (click)="saveChanges()">Guardar cambios</button>
+          <button *ngIf="detail.reservation.status === statuses.Pending" type="button" class="primary-button"
+            [disabled]="isSaving" (click)="confirmReservation()">Confirmar</button>
+          <button *ngIf="canCancel" type="button" class="danger-button" [disabled]="isSaving" (click)="openCancelDialog()">Cancelar reserva</button>
+          <button type="button" class="secondary-button" (click)="closeDialog()">Cerrar</button>
+        </footer>
+      </ng-container>
+    </div>
+
+    <form *ngIf="modal === 'cancel'" #cancelForm="ngForm" class="reservation-form"
+      (ngSubmit)="cancelReservation(cancelForm.valid === true)">
+      <p class="form-hint">El reembolso máximo permitido es la suma de pagos en estado pagado: {{ paidAmount | currency:selectedDetail?.reservation?.currency:'symbol':'1.2-2' }}.</p>
+      <label class="form-field"><span>Motivo de cancelación <b>*</b></span><textarea name="cancelReason" [(ngModel)]="cancelReason" maxlength="2000" rows="3" required></textarea></label>
+      <label class="form-field"><span>Reembolso</span><input type="number" name="refundAmount" [(ngModel)]="refundAmount" min="0" [max]="paidAmount" step="0.01" required /></label>
+      <footer class="modal-footer">
+        <button type="button" class="secondary-button" [disabled]="isSaving" (click)="modal = 'details'">Volver</button>
+        <button type="submit" class="danger-button" [disabled]="isSaving">{{ isSaving ? 'Procesando...' : 'Confirmar cancelación' }}</button>
+      </footer>
+    </form>
+  </section>
+</div>

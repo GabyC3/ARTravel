@@ -10,7 +10,7 @@ namespace ARTravel.API.Controllers;
 
 [ApiController]
 [Route("api/reservations")]
-[Authorize(Policy = "Administrator")]
+[Authorize(Policy = "StaffRead")]
 public sealed class ReservationsController(IReservationService reservationService) : ControllerBase
 {
     [HttpGet]
@@ -44,6 +44,7 @@ public sealed class ReservationsController(IReservationService reservationServic
         Ok(await reservationService.GetAsync(id, cancellationToken));
 
     [HttpPost]
+    [Authorize(Policy = "Commercial")]
     [ProducesResponseType<ReservationDetail>(StatusCodes.Status201Created)]
     public async Task<ActionResult<ReservationDetail>> CreateReservation(
         CreateReservationRequest request,
@@ -65,6 +66,7 @@ public sealed class ReservationsController(IReservationService reservationServic
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Policy = "Commercial")]
     [ProducesResponseType<ReservationDetail>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ReservationDetail>> UpdateReservation(
         int id,
@@ -76,6 +78,7 @@ public sealed class ReservationsController(IReservationService reservationServic
             cancellationToken));
 
     [HttpPatch("{id:int}/confirm")]
+    [Authorize(Policy = "Commercial")]
     [ProducesResponseType<ReservationDetail>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ReservationDetail>> ConfirmReservation(
         int id,
@@ -83,6 +86,7 @@ public sealed class ReservationsController(IReservationService reservationServic
         Ok(await reservationService.ConfirmAsync(id, cancellationToken));
 
     [HttpPatch("{id:int}/cancel")]
+    [Authorize(Policy = "Commercial")]
     [ProducesResponseType<ReservationDetail>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ReservationDetail>> CancelReservation(
         int id,
@@ -101,6 +105,7 @@ public sealed class ReservationsController(IReservationService reservationServic
     }
 
     [HttpPatch("{id:int}/status")]
+    [Authorize(Policy = "Commercial")]
     [ProducesResponseType<ReservationDetail>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ReservationDetail>> UpdateReservationStatus(
         int id,
@@ -151,6 +156,7 @@ public sealed class ReservationsController(IReservationService reservationServic
             cancellationToken));
 
     [HttpPost("{reservationId:int}/passengers")]
+    [Authorize(Policy = "Commercial")]
     [ProducesResponseType<ReservationPassengerResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<ReservationPassengerResponse>> AddReservationPassenger(
         int reservationId,
@@ -168,6 +174,7 @@ public sealed class ReservationsController(IReservationService reservationServic
     }
 
     [HttpPut("{reservationId:int}/passengers/{passengerId:int}")]
+    [Authorize(Policy = "Commercial")]
     [ProducesResponseType<ReservationPassengerResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<ReservationPassengerResponse>> UpdateReservationPassenger(
         int reservationId,
@@ -181,6 +188,7 @@ public sealed class ReservationsController(IReservationService reservationServic
             cancellationToken));
 
     [HttpDelete("{reservationId:int}/passengers/{passengerId:int}")]
+    [Authorize(Policy = "Commercial")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RemoveReservationPassenger(
         int reservationId,

@@ -27,8 +27,15 @@ public sealed class DestinationService(IDestinationStore store) : IDestinationSe
             NormalizeOptional(country),
             isActive,
             cancellationToken);
+        var imageUrls = await store.GetPrimaryImageUrlsAsync(
+            result.Items.Select(destination => destination.Id).ToArray(),
+            cancellationToken);
         return new PagedDestinations(
-            result.Items.Select(ToResponse).ToArray(),
+            result.Items
+                .Select(destination => ToResponse(
+                    destination,
+                    imageUrls.GetValueOrDefault(destination.Id)))
+                .ToArray(),
             page,
             pageSize,
             result.TotalCount);
@@ -41,6 +48,13 @@ public sealed class DestinationService(IDestinationStore store) : IDestinationSe
         return new DestinationDetail(ToResponse(destination), images.Select(ToResponse).ToArray());
     }
 
+    public async Task<IReadOnlyList<DestinationResponse>> GetParentDestinationsAsync(
+        CancellationToken cancellationToken)
+    {
+        var parents = await store.ListParentDestinationsAsync(cancellationToken);
+        return parents.Select(destination => ToResponse(destination)).ToArray();
+    }
+
     public async Task<DestinationDetail> CreateAsync(
         CreateDestinationCommand command,
         CancellationToken cancellationToken)
@@ -48,6 +62,7 @@ public sealed class DestinationService(IDestinationStore store) : IDestinationSe
         ValidateDestinationType(command.DestinationType);
         ValidateLocation(command.Latitude, command.Longitude, command.AltitudeMeters);
         await ValidateParentAsync(command.ParentDestinationId, null, cancellationToken);
+        var imageUrls = NormalizeImageUrls(command.ImageUrls);
 
         var destination = new Destination
         {
@@ -65,6 +80,17 @@ public sealed class DestinationService(IDestinationStore store) : IDestinationSe
             IsActive = command.IsActive,
             CreatedAt = DateTime.UtcNow
         };
+        for (var index = 0; index < imageUrls.Length; index++)
+        {
+            destination.Images.Add(new DestinationImage
+            {
+                ImageUrl = imageUrls[index],
+                IsPrimary = index == 0,
+                DisplayOrder = index,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
         store.Add(destination);
         await store.SaveChangesAsync(cancellationToken);
         return await GetAsync(destination.Id, cancellationToken);
@@ -96,6 +122,19 @@ public sealed class DestinationService(IDestinationStore store) : IDestinationSe
         return await GetAsync(id, cancellationToken);
     }
 
+    public async Task DeleteAsync(int id, CancellationToken cancellationToken)
+    {
+        var destination = await GetDestinationAsync(id, cancellationToken);
+        if (await store.HasReferencesAsync(id, cancellationToken))
+        {
+            throw new DestinationConflictException(
+                "The destination cannot be deleted while it is used by other destinations, products, or itineraries.");
+        }
+
+        store.Remove(destination);
+        await store.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<DestinationResponse> SetStatusAsync(
         int id,
         bool isActive,
@@ -122,7 +161,7 @@ public sealed class DestinationService(IDestinationStore store) : IDestinationSe
             pageSize,
             cancellationToken);
         return new PagedDestinations(
-            result.Items.Select(ToResponse).ToArray(),
+            result.Items.Select(destination => ToResponse(destination)).ToArray(),
             page,
             pageSize,
             result.TotalCount);
@@ -352,7 +391,37 @@ public sealed class DestinationService(IDestinationStore store) : IDestinationSe
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static DestinationResponse ToResponse(Destination destination) =>
+    private static string[] NormalizeImageUrls(IReadOnlyList<string>? imageUrls)
+    {
+        if (imageUrls is null)
+        {
+            return [];
+        }
+
+        if (imageUrls.Count > 10)
+        {
+            throw new ArgumentException("A destination cannot have more than 10 images.");
+        }
+
+        var normalized = imageUrls
+            .Select(url => NormalizeRequired(url, nameof(imageUrls)))
+            .ToArray();
+        if (normalized.Any(url =>
+                !url.StartsWith("/images/", StringComparison.Ordinal) ||
+                url.Contains("..", StringComparison.Ordinal) ||
+                url.Contains('\\') ||
+                url.Contains('?') ||
+                url.Contains('#')))
+        {
+            throw new ArgumentException("Destination images must use a local path under /images/.");
+        }
+
+        return normalized.Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    private static DestinationResponse ToResponse(
+        Destination destination,
+        string? primaryImageUrl = null) =>
         new(
             destination.Id,
             destination.Name,
@@ -368,7 +437,8 @@ public sealed class DestinationService(IDestinationStore store) : IDestinationSe
             destination.ParentDestinationId,
             destination.IsActive,
             destination.CreatedAt,
-            destination.UpdatedAt);
+            destination.UpdatedAt,
+            primaryImageUrl);
 
     private static DestinationImageResponse ToResponse(DestinationImage image) =>
         new(

@@ -8,7 +8,7 @@ namespace ARTravel.API.Controllers;
 
 [ApiController]
 [Route("api/users")]
-[Authorize(Policy = "Administrator")]
+[Authorize(Policy = "Manager")]
 public sealed class UsersController(IUserManagementService userManagementService) : ControllerBase
 {
     [HttpGet]
@@ -16,13 +16,15 @@ public sealed class UsersController(IUserManagementService userManagementService
     public async Task<ActionResult<PagedUsers>> List(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
         CancellationToken cancellationToken = default)
     {
-        var result = await userManagementService.ListAsync(page, pageSize, cancellationToken);
+        var result = await userManagementService.ListAsync(page, pageSize, search, cancellationToken);
         return Ok(result);
     }
 
     [HttpPost]
+    [Authorize(Policy = "Administrator")]
     [ProducesResponseType<UserSummary>(StatusCodes.Status201Created)]
     public async Task<ActionResult<UserSummary>> Create(
         RegisterRequest request,
@@ -58,6 +60,7 @@ public sealed class UsersController(IUserManagementService userManagementService
     }
 
     [HttpPut("{userId:int}")]
+    [Authorize(Policy = "Administrator")]
     [ProducesResponseType<UserSummary>(StatusCodes.Status200OK)]
     public async Task<ActionResult<UserSummary>> Update(
         int userId,
@@ -72,6 +75,7 @@ public sealed class UsersController(IUserManagementService userManagementService
     }
 
     [HttpPatch("{userId:int}/status")]
+    [Authorize(Policy = "Administrator")]
     [ProducesResponseType<UserSummary>(StatusCodes.Status200OK)]
     public async Task<ActionResult<UserSummary>> SetActive(
         int userId,

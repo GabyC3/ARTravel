@@ -1,0 +1,315 @@
+<div *ngIf="toastMessage" class="toast" [class.toast-error]="toastType === 'error'"
+  [class.toast-success]="toastType === 'success'" [attr.role]="toastType === 'error' ? 'alert' : 'status'">
+  <span>{{ toastMessage }}</span>
+  <button type="button" aria-label="Cerrar notificación" (click)="clearToast()">×</button>
+</div>
+
+<section class="destinations-page">
+  <header class="destinations-heading">
+    <div>
+      <p class="eyebrow">GESTIÓN TURÍSTICA</p>
+      <h1>Destinos</h1>
+    </div>
+    <button class="primary-button" type="button" (click)="openCreateDialog()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      Nuevo destino
+    </button>
+  </header>
+
+  <div class="toolbar">
+    <label class="search-box">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m16 16 4 4" />
+      </svg>
+      <input
+        type="search"
+        name="destinationSearch"
+        [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange($event)"
+        placeholder="Buscar por destino o provincia..."
+        aria-label="Buscar por destino o provincia"
+      />
+      <button *ngIf="searchText" type="button" class="clear-search" aria-label="Limpiar búsqueda"
+        (click)="searchText = ''; onSearchChange('')">×</button>
+    </label>
+
+    <div class="filter-wrap">
+      <button class="filter-button" type="button" [attr.aria-expanded]="isFilterOpen"
+        (click)="isFilterOpen = !isFilterOpen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6.5 7.5V19l-3 1v-7.5L4 5Z" /></svg>
+        Filtros
+        <span class="filter-indicator" *ngIf="statusFilter !== 'all'"></span>
+      </button>
+      <div class="filter-panel" *ngIf="isFilterOpen">
+        <strong>Estado del destino</strong>
+        <button *ngFor="let filter of statusFilters" type="button"
+          [class.selected]="statusFilter === filter.value"
+          (click)="setStatusFilter(filter.value)">
+          <span>{{ filter.label }}</span>
+          <svg *ngIf="statusFilter === filter.value" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="m4 10 4 4 8-8" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="list-summary">
+    <span *ngIf="!isLoading">{{ firstVisibleResult }}–{{ lastVisibleResult }} de {{ totalCount }} destinos</span>
+    <span *ngIf="isLoading">Cargando destinos…</span>
+  </div>
+
+  <div *ngIf="error" class="notice error-notice" role="alert">{{ error }}</div>
+  <div *ngIf="isLoading && destinations.length === 0" class="loading-state" aria-live="polite">
+    <span class="spinner"></span>
+    Cargando destinos...
+  </div>
+
+  <div *ngIf="!isLoading && !error && destinations.length === 0" class="empty-state">
+    <span class="empty-icon">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z M12 10a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" /></svg>
+    </span>
+    <h2>{{ searchText ? 'No se encontraron destinos' : 'No hay destinos registrados' }}</h2>
+    <p *ngIf="searchText">Prueba con otro nombre o provincia.</p>
+    <p *ngIf="!searchText && statusFilter === 'active'">Crea un destino nuevo o cambia el filtro de estado.</p>
+    <p *ngIf="!searchText && statusFilter !== 'active'">Puedes agregar un destino para comenzar.</p>
+    <button class="secondary-button" type="button" (click)="openCreateDialog()">Crear destino</button>
+  </div>
+
+  <div class="destination-grid" *ngIf="destinations.length > 0">
+    <article class="destination-card" *ngFor="let destination of destinations; let index = index">
+      <div class="destination-cover">
+        <img *ngIf="destination.primaryImageUrl; else coverPlaceholder"
+          [src]="destination.primaryImageUrl"
+          [alt]="destination.name"
+          loading="lazy"
+          (error)="destination.primaryImageUrl = null" />
+        <ng-template #coverPlaceholder>
+          <div class="destination-art" [ngClass]="imageTheme(destination)">
+            <svg viewBox="0 0 420 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <circle cx="325" cy="34" r="17" class="art-sun" />
+              <path d="m0 98 90-68 57 43 57-58 96 83H0Z" class="art-mountain-back" />
+              <path d="m108 79 39-6-57-43 31 49 23 14Z" class="art-snow" />
+              <path d="m180 98 75-71 88 71H180Z" class="art-mountain-front" />
+              <path d="M0 104c68-17 127 17 197 1s141-12 223 4v41H0Z" class="art-water" />
+              <path d="M0 119c90-15 162 19 253 2s120-12 167-5v34H0Z" class="art-shore" />
+            </svg>
+          </div>
+        </ng-template>
+        <span class="cover-type">{{ typeLabel(destination.destinationType) }}</span>
+      </div>
+
+      <div class="destination-card-body">
+        <h2 [title]="destination.name">{{ destination.name }}</h2>
+        <div class="destination-meta">
+          <span class="location">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z M12 10a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" /></svg>
+            {{ destination.province || destination.city || destination.country }}
+          </span>
+          <span class="status-badge" [class.inactive]="!destination.isActive">
+            {{ destination.isActive ? 'Activo' : 'Inactivo' }}
+          </span>
+        </div>
+        <div class="card-actions">
+          <button class="details-button" type="button" (click)="openDetailsDialog(destination)">
+            Ver detalles
+          </button>
+          <div class="card-options">
+            <button class="card-options-button" type="button" aria-label="Más opciones para {{ destination.name }}"
+              [attr.aria-expanded]="openOptionsId === destination.id"
+              (click)="toggleOptions(destination.id)">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" />
+              </svg>
+            </button>
+            <div class="options-menu" *ngIf="openOptionsId === destination.id">
+              <button type="button" (click)="openEditDialog(destination)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 4 4 4M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16l-1 4Z" /></svg>
+                Editar
+              </button>
+              <button type="button" class="delete-option" (click)="openDeleteDialog(destination)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" /></svg>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <footer class="pagination" *ngIf="totalPages > 1">
+    <span>Página {{ currentPage }} de {{ totalPages }}</span>
+    <div>
+      <button type="button" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">Anterior</button>
+      <button type="button" [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">Siguiente</button>
+    </div>
+  </footer>
+</section>
+
+<div class="modal-backdrop" *ngIf="modal" (click)="closeDialog()">
+  <section class="destination-modal" role="dialog" aria-modal="true"
+    aria-labelledby="destination-modal-title" (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <div>
+        <p class="eyebrow">{{ modal === 'details' ? 'INFORMACIÓN DEL DESTINO' : 'GESTIÓN DE DESTINOS' }}</p>
+        <h2 id="destination-modal-title">
+          {{ modal === 'create' ? 'Nuevo destino' : modal === 'edit' ? 'Editar destino' : modal === 'delete' ? 'Eliminar destino' : 'Detalles del destino' }}
+        </h2>
+      </div>
+      <button type="button" class="modal-close" aria-label="Cerrar" [disabled]="isSaving" (click)="closeDialog()">×</button>
+    </header>
+
+    <div *ngIf="modalError" class="notice error-notice modal-notice" role="alert">{{ modalError }}</div>
+    <div *ngIf="parentOptionsError" class="notice error-notice modal-notice" role="alert">
+      {{ parentOptionsError }}
+    </div>
+
+    <ng-container *ngIf="modal === 'details'">
+      <div *ngIf="!selectedDetail && !modalError" class="modal-loading">Cargando información del destino…</div>
+      <div *ngIf="selectedDetail as detail" class="destination-details">
+        <div class="detail-cover">
+          <img *ngIf="detailImageUrl; else detailPlaceholder" [src]="detailImageUrl" [alt]="detail.destination.name" />
+          <ng-template #detailPlaceholder>
+            <div class="destination-art detail-art" [ngClass]="imageTheme(detail.destination)">
+              <svg viewBox="0 0 420 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                <circle cx="325" cy="34" r="17" class="art-sun" />
+                <path d="m0 98 90-68 57 43 57-58 96 83H0Z" class="art-mountain-back" />
+                <path d="m180 98 75-71 88 71H180Z" class="art-mountain-front" />
+                <path d="M0 104c68-17 127 17 197 1s141-12 223 4v41H0Z" class="art-water" />
+                <path d="M0 119c90-15 162 19 253 2s120-12 167-5v34H0Z" class="art-shore" />
+              </svg>
+            </div>
+          </ng-template>
+        </div>
+        <div class="detail-title-row">
+          <div>
+            <h3>{{ detail.destination.name }}</h3>
+            <p>{{ detail.destination.province || detail.destination.city || detail.destination.country }}</p>
+          </div>
+          <span class="status-badge" [class.inactive]="!detail.destination.isActive">
+            {{ detail.destination.isActive ? 'Activo' : 'Inactivo' }}
+          </span>
+        </div>
+        <dl class="detail-grid">
+          <div><dt>Tipo</dt><dd>{{ typeLabel(detail.destination.destinationType) }}</dd></div>
+          <div><dt>País</dt><dd>{{ detail.destination.country }}</dd></div>
+          <div><dt>Provincia</dt><dd>{{ detail.destination.province || 'No especificada' }}</dd></div>
+          <div><dt>Ciudad</dt><dd>{{ detail.destination.city || 'No especificada' }}</dd></div>
+          <div class="full-row"><dt>Dirección</dt><dd>{{ detail.destination.address || 'No especificada' }}</dd></div>
+          <div class="full-row"><dt>Descripción</dt><dd>{{ detail.destination.description || 'Sin descripción disponible.' }}</dd></div>
+        </dl>
+        <footer class="modal-footer">
+          <button type="button" class="secondary-button" (click)="closeDialog()">Cerrar</button>
+          <button type="button" class="primary-button" (click)="openEditDialog(detail.destination)">Editar destino</button>
+        </footer>
+      </div>
+    </ng-container>
+
+    <form *ngIf="modal === 'create' || modal === 'edit'" #destinationForm="ngForm"
+      class="destination-form" (ngSubmit)="saveDestination(destinationForm.valid === true)">
+      <label class="form-field full-row">
+        <span>Nombre del destino <b>*</b></span>
+        <input type="text" name="name" [(ngModel)]="form.name" maxlength="200" required />
+      </label>
+      <div class="form-row">
+        <label class="form-field">
+          <span>Tipo de destino <b>*</b></span>
+          <select name="destinationType" [(ngModel)]="form.destinationType" required>
+            <option *ngFor="let type of destinationTypes" [ngValue]="type.value">{{ type.label }}</option>
+          </select>
+        </label>
+        <label class="form-field">
+          <span>País <b>*</b></span>
+          <input type="text" name="country" [(ngModel)]="form.country" maxlength="100" required />
+        </label>
+      </div>
+      <label class="form-field full-row" *ngIf="modal === 'create'">
+        <span>Jerarquía del destino <b>*</b></span>
+        <select name="hierarchy" [(ngModel)]="form.hierarchy"
+          (ngModelChange)="onHierarchyChange($event)" required>
+          <option value="parent">Destino padre</option>
+          <option value="child">Destino hijo</option>
+        </select>
+      </label>
+      <label class="form-field full-row"
+        *ngIf="modal === 'create' && form.hierarchy === 'child'">
+        <span>Destino padre <b>*</b></span>
+        <select name="parentDestinationId" [(ngModel)]="form.parentDestinationId"
+          [disabled]="isLoadingParents || parentDestinations.length === 0" required>
+          <option [ngValue]="null" disabled>
+            {{ isLoadingParents ? 'Cargando destinos padre…' : 'Selecciona un destino padre' }}
+          </option>
+          <option *ngFor="let parent of parentDestinations" [ngValue]="parent.id">
+            {{ parent.name }} — {{ parent.province || parent.city || parent.country }}
+          </option>
+        </select>
+        <small *ngIf="!isLoadingParents && parentDestinations.length === 0 && !parentOptionsError">
+          No hay destinos padre activos. Crea primero un destino padre.
+        </small>
+      </label>
+      <div class="form-row">
+        <label class="form-field">
+          <span>Provincia</span>
+          <input type="text" name="province" [(ngModel)]="form.province" maxlength="100" />
+        </label>
+        <label class="form-field">
+          <span>Ciudad</span>
+          <input type="text" name="city" [(ngModel)]="form.city" maxlength="100" />
+        </label>
+      </div>
+      <label class="form-field">
+        <span>Dirección</span>
+        <input type="text" name="address" [(ngModel)]="form.address" maxlength="300" />
+      </label>
+      <label class="form-field">
+        <span>Descripción</span>
+        <textarea name="description" [(ngModel)]="form.description" maxlength="2000" rows="3"></textarea>
+      </label>
+      <fieldset class="image-selection full-row" *ngIf="modal === 'create' || modal === 'edit'">
+        <legend>Imágenes disponibles</legend>
+        <p>Selecciona las imágenes que se asociarán al destino. La portada se muestra primero.</p>
+        <p *ngIf="isLoadingEditImages" class="image-loading">Cargando imágenes actuales…</p>
+        <div class="image-option-list">
+          <div class="image-option" *ngFor="let image of selectableImages">
+            <label class="image-checkbox">
+              <input type="checkbox" [checked]="selectedImageUrls.includes(image.url)"
+                (change)="toggleImageSelection(image.url, $event)" />
+              <img [src]="image.url" [alt]="image.altText" />
+              <span>{{ image.label }}</span>
+            </label>
+            <label class="primary-image-option" *ngIf="selectedImageUrls.includes(image.url)">
+              <input type="radio" name="primaryDestinationImage" [checked]="primaryImageUrl === image.url"
+                (change)="setPrimaryImage(image.url)" />
+              Portada
+            </label>
+          </div>
+        </div>
+      </fieldset>
+      <p class="form-hint"><b>*</b> Campos obligatorios. Los destinos nuevos se crean activos.</p>
+      <footer class="modal-footer">
+        <button type="button" class="secondary-button" [disabled]="isSaving" (click)="closeDialog()">Cancelar</button>
+        <button type="submit" class="primary-button"
+          [disabled]="isSaving || isLoadingEditImages || (modal === 'create' &&
+            form.hierarchy === 'child' && (isLoadingParents || parentDestinations.length === 0))">
+          {{ isSaving ? 'Guardando…' : modal === 'edit' ? 'Guardar cambios' : 'Crear destino' }}
+        </button>
+      </footer>
+    </form>
+
+    <div *ngIf="modal === 'delete'" class="delete-confirmation">
+      <span class="delete-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18.5A1.7 1.7 0 0 0 3.3 21h17.4a1.7 1.7 0 0 0 1.5-2.5L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg>
+      </span>
+      <p>¿Seguro que deseas eliminar <strong>{{ selectedDestination?.name }}</strong>? Esta acción no se puede deshacer.</p>
+      <p class="delete-hint">No se podrán eliminar destinos asociados a productos, itinerarios u otros destinos.</p>
+      <footer class="modal-footer">
+        <button type="button" class="secondary-button" [disabled]="isSaving" (click)="closeDialog()">Cancelar</button>
+        <button type="button" class="danger-button" [disabled]="isSaving" (click)="confirmDelete()">
+          {{ isSaving ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+      </footer>
+    </div>
+  </section>
+</div>

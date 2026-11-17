@@ -17,6 +17,9 @@ public interface IDestinationService
 
     Task<DestinationDetail> GetAsync(int id, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<DestinationResponse>> GetParentDestinationsAsync(
+        CancellationToken cancellationToken);
+
     Task<DestinationDetail> CreateAsync(
         CreateDestinationCommand command,
         CancellationToken cancellationToken);
@@ -25,6 +28,8 @@ public interface IDestinationService
         int id,
         UpdateDestinationCommand command,
         CancellationToken cancellationToken);
+
+    Task DeleteAsync(int id, CancellationToken cancellationToken);
 
     Task<DestinationResponse> SetStatusAsync(
         int id,

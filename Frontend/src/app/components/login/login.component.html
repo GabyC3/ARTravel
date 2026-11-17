@@ -1,0 +1,143 @@
+<main class="login-page">
+  <section class="login-card" aria-label="Acceso a AR/Travel">
+    <aside class="scenic-panel" role="img" aria-label="Paisaje de montañas y lago">
+      <div class="scenic-caption">
+        <span>AR/Travel</span>
+        <p>Descubre nuevos destinos</p>
+      </div>
+    </aside>
+
+    <section class="form-panel">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 100 66" aria-hidden="true">
+          <path d="M8 57 34 22l10 13 10-15 38 37H75L54 37 44 51l-9-11-13 17Z" />
+          <path d="m43 39 8-11 7 8-8 9Z" />
+        </svg>
+        <h1>AR/Travel</h1>
+        <p>Tu aliado en la gestión turística</p>
+      </div>
+
+      <h2>{{ isRegistering ? 'Crear cuenta' : 'Iniciar Sesión' }}</h2>
+      <p class="form-intro" *ngIf="isRegistering">Completa tus datos para comenzar a viajar.</p>
+
+      <div class="error-message" *ngIf="error" role="alert" aria-live="polite">
+        {{ error }}
+      </div>
+      <div class="success-message" *ngIf="success" role="status" aria-live="polite">
+        {{ success }}
+      </div>
+
+      <form *ngIf="!isRegistering" class="auth-form" (ngSubmit)="onLogin()">
+        <label class="input-wrap">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+          </svg>
+          <input
+            type="email"
+            name="email"
+            [(ngModel)]="credentials.email"
+            placeholder="Correo electrónico"
+            autocomplete="username"
+            aria-label="Correo electrónico"
+            required
+          />
+        </label>
+
+        <label class="input-wrap">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="4" y="10" width="16" height="11" rx="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3" />
+          </svg>
+          <input
+            type="password"
+            name="password"
+            [(ngModel)]="credentials.password"
+            placeholder="Contraseña"
+            autocomplete="current-password"
+            aria-label="Contraseña"
+            minlength="8"
+            pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$"
+            minlength="8"
+            pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$"
+            required
+          />
+        </label>
+
+        <button class="submit-button" type="submit" [disabled]="isLoading">
+          {{ isLoading ? 'Ingresando…' : 'Ingresar' }}
+        </button>
+      </form>
+
+      <form *ngIf="isRegistering" class="auth-form register-form" (ngSubmit)="onRegister()">
+        <div class="name-fields">
+          <label class="input-wrap">
+            <input
+              type="text"
+              name="firstName"
+              [(ngModel)]="registration.firstName"
+              placeholder="Nombre"
+              autocomplete="given-name"
+              aria-label="Nombre"
+              required
+            />
+          </label>
+          <label class="input-wrap">
+            <input
+              type="text"
+              name="lastName"
+              [(ngModel)]="registration.lastName"
+              placeholder="Apellido"
+              autocomplete="family-name"
+              aria-label="Apellido"
+              required
+            />
+          </label>
+        </div>
+        <label class="input-wrap">
+          <input
+            type="email"
+            name="registerEmail"
+            [(ngModel)]="registration.email"
+            placeholder="Correo electrónico"
+            autocomplete="email"
+            aria-label="Correo electrónico"
+            required
+          />
+        </label>
+        <label class="input-wrap">
+          <input
+            type="tel"
+            name="phoneNumber"
+            [(ngModel)]="registration.phoneNumber"
+            placeholder="Teléfono (opcional)"
+            autocomplete="tel"
+            aria-label="Teléfono (opcional)"
+          />
+        </label>
+        <label class="input-wrap">
+          <input
+            type="password"
+            name="registerPassword"
+            [(ngModel)]="registration.password"
+            placeholder="Contraseña (mínimo 8 caracteres)"
+            autocomplete="new-password"
+            aria-label="Contraseña (mínimo 8 caracteres)"
+            minlength="8"
+            pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$"
+            required
+          />
+        </label>
+        <button class="submit-button" type="submit" [disabled]="isLoading">
+          {{ isLoading ? 'Creando cuenta…' : 'Registrarse' }}
+        </button>
+      </form>
+
+      <p class="mode-switch">
+        {{ isRegistering ? '¿Ya tienes una cuenta?' : '¿No tienes una cuenta?' }}
+        <button type="button" (click)="toggleMode()">
+          {{ isRegistering ? 'Iniciar sesión' : 'Registrarse' }}
+        </button>
+      </p>
+    </section>
+  </section>
+</main>

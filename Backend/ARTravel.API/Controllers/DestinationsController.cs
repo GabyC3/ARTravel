@@ -10,7 +10,7 @@ namespace ARTravel.API.Controllers;
 
 [ApiController]
 [Route("api/destinations")]
-[Authorize(Policy = "Administrator")]
+[Authorize(Policy = "StaffRead")]
 public sealed class DestinationsController(IDestinationService destinationService) : ControllerBase
 {
     [HttpGet]
@@ -39,7 +39,14 @@ public sealed class DestinationsController(IDestinationService destinationServic
         CancellationToken cancellationToken) =>
         Ok(await destinationService.GetAsync(id, cancellationToken));
 
+    [HttpGet("parents")]
+    [ProducesResponseType<IReadOnlyList<DestinationResponse>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<DestinationResponse>>> GetParentDestinations(
+        CancellationToken cancellationToken) =>
+        Ok(await destinationService.GetParentDestinationsAsync(cancellationToken));
+
     [HttpPost]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<DestinationDetail>(StatusCodes.Status201Created)]
     public async Task<ActionResult<DestinationDetail>> CreateDestination(
         CreateDestinationRequest request,
@@ -58,7 +65,8 @@ public sealed class DestinationsController(IDestinationService destinationServic
                 request.Longitude,
                 request.AltitudeMeters,
                 request.ParentDestinationId,
-                request.IsActive),
+                request.IsActive,
+                request.ImageUrls),
             cancellationToken);
         return CreatedAtAction(
             nameof(GetDestinationById),
@@ -67,6 +75,7 @@ public sealed class DestinationsController(IDestinationService destinationServic
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<DestinationDetail>(StatusCodes.Status200OK)]
     public async Task<ActionResult<DestinationDetail>> UpdateDestination(
         int id,
@@ -88,7 +97,18 @@ public sealed class DestinationsController(IDestinationService destinationServic
                 request.ParentDestinationId),
             cancellationToken));
 
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeleteDestination(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        await destinationService.DeleteAsync(id, cancellationToken);
+        return NoContent();
+    }
+
     [HttpPatch("{id:int}/status")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<DestinationResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<DestinationResponse>> UpdateDestinationStatus(
         int id,
@@ -131,6 +151,7 @@ public sealed class DestinationsController(IDestinationService destinationServic
         Ok(await destinationService.GetSummaryAsync(id, cancellationToken));
 
     [HttpPost("{id:int}/images")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<DestinationImageResponse>(StatusCodes.Status201Created)]
     public async Task<ActionResult<DestinationImageResponse>> AddDestinationImage(
         int id,
@@ -149,6 +170,7 @@ public sealed class DestinationsController(IDestinationService destinationServic
     }
 
     [HttpDelete("{id:int}/images/{imageId:int}")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RemoveDestinationImage(
         int id,
@@ -160,6 +182,7 @@ public sealed class DestinationsController(IDestinationService destinationServic
     }
 
     [HttpPatch("{id:int}/images/{imageId:int}/primary")]
+    [Authorize(Policy = "Manager")]
     [ProducesResponseType<DestinationImageResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<DestinationImageResponse>> SetPrimaryDestinationImage(
         int id,

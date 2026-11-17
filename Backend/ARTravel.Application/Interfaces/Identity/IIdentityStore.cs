@@ -11,9 +11,10 @@ public interface IIdentityStore
     Task<IReadOnlyList<User>> ListUsersAsync(
         int skip,
         int take,
+        string? search,
         CancellationToken cancellationToken);
 
-    Task<int> CountUsersAsync(CancellationToken cancellationToken);
+    Task<int> CountUsersAsync(string? search, CancellationToken cancellationToken);
 
     Task<Role?> FindRoleByIdAsync(int roleId, CancellationToken cancellationToken);
 

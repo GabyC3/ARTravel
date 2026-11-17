@@ -12,6 +12,7 @@ public sealed class UserManagementService(
     public async Task<PagedUsers> ListAsync(
         int page,
         int pageSize,
+        string? search,
         CancellationToken cancellationToken)
     {
         if (page < 1 ||
@@ -22,14 +23,15 @@ public sealed class UserManagementService(
         }
 
         var skip = checked((page - 1) * pageSize);
-        var users = await store.ListUsersAsync(skip, pageSize, cancellationToken);
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        var users = await store.ListUsersAsync(skip, pageSize, normalizedSearch, cancellationToken);
         var summaries = users.Select(ToSummary).ToArray();
 
         return new PagedUsers(
             summaries,
             page,
             pageSize,
-            await store.CountUsersAsync(cancellationToken));
+            await store.CountUsersAsync(normalizedSearch, cancellationToken));
     }
 
     public async Task<UserSummary> GetAsync(int userId, CancellationToken cancellationToken)

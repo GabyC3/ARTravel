@@ -913,6 +913,42 @@ namespace ARTravel.Infrastructure.Data.Migrations
                             IsActive = true,
                             Name = "Admin",
                             NormalizedName = "ADMIN"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Manager",
+                            IsActive = true,
+                            Name = "Manager",
+                            NormalizedName = "MANAGER"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Commercial agent",
+                            IsActive = true,
+                            Name = "Agente",
+                            NormalizedName = "AGENTE"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Tourism operator",
+                            IsActive = true,
+                            Name = "Operador",
+                            NormalizedName = "OPERADOR"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Tour guide",
+                            IsActive = true,
+                            Name = "Guia",
+                            NormalizedName = "GUIA"
                         });
                 });
 
@@ -1208,7 +1244,7 @@ namespace ARTravel.Infrastructure.Data.Migrations
             modelBuilder.Entity("ARTravel.Domain.Entities.DestinationImage", b =>
                 {
                     b.HasOne("ARTravel.Domain.Entities.Destination", null)
-                        .WithMany()
+                        .WithMany("Images")
                         .HasForeignKey("DestinationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1449,6 +1485,11 @@ namespace ARTravel.Infrastructure.Data.Migrations
                     b.Navigation("Reservations");
 
                     b.Navigation("Trips");
+                });
+
+            modelBuilder.Entity("ARTravel.Domain.Entities.Destination", b =>
+                {
+                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("ARTravel.Domain.Entities.Itinerary", b =>

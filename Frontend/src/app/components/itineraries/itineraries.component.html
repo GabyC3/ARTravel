@@ -1,0 +1,225 @@
+<div *ngIf="toastMessage" class="toast" [class.toast-error]="toastType === 'error'"
+  [class.toast-success]="toastType === 'success'" [attr.role]="toastType === 'error' ? 'alert' : 'status'">
+  <span>{{ toastMessage }}</span>
+  <button type="button" aria-label="Cerrar notificación" (click)="clearToast()">×</button>
+</div>
+
+<section class="itineraries-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">DISEÑO DE EXPERIENCIAS</p>
+      <h1>Itinerarios</h1>
+      <p class="page-description">Organiza versiones, días y actividades de los productos turísticos.</p>
+    </div>
+    <button class="primary-button" type="button" (click)="openCreateDialog()">＋ Nuevo itinerario</button>
+  </header>
+
+  <div class="toolbar">
+    <label class="search-box">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4" /></svg>
+      <input type="search" name="itinerarySearch" [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange($event)" placeholder="Buscar por nombre o descripción..."
+        aria-label="Buscar itinerarios" />
+      <button *ngIf="searchText" type="button" class="clear-search" aria-label="Limpiar búsqueda"
+        (click)="searchText = ''; onSearchChange('')">×</button>
+    </label>
+    <div class="filter-wrap">
+      <button class="filter-button" type="button" [attr.aria-expanded]="isFilterOpen"
+        (click)="isFilterOpen = !isFilterOpen">Estado ▾</button>
+      <div class="filter-panel" *ngIf="isFilterOpen">
+        <button *ngFor="let item of filters" type="button" [class.selected]="filter === item.value"
+          (click)="setFilter(item.value)">{{ item.label }}</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="list-summary">
+    <span *ngIf="!isLoading">{{ totalCount }} itinerarios</span>
+    <span *ngIf="isLoading">Cargando itinerarios...</span>
+  </div>
+  <div *ngIf="error" class="notice error-notice" role="alert">{{ error }}</div>
+  <div *ngIf="isLoading && itineraries.length === 0" class="loading-state"><span class="spinner"></span> Cargando itinerarios...</div>
+  <div *ngIf="!isLoading && !error && itineraries.length === 0" class="empty-state">
+    <span class="empty-icon">☷</span>
+    <h2>{{ searchText ? 'No se encontraron itinerarios' : 'Todavía no hay itinerarios' }}</h2>
+    <p>{{ searchText ? 'Prueba con otro término de búsqueda.' : 'Crea la primera versión para comenzar a organizar las actividades.' }}</p>
+    <button class="secondary-button" type="button" (click)="openCreateDialog()">Crear itinerario</button>
+  </div>
+
+  <div class="itinerary-grid" *ngIf="itineraries.length > 0">
+    <article class="itinerary-card" *ngFor="let itinerary of itineraries">
+      <div class="card-topline">
+        <span class="version-label">VERSIÓN {{ itinerary.version }}</span>
+        <span class="status-chip" [class.active-status]="itinerary.isActive" [class.inactive-status]="!itinerary.isActive">
+          {{ itinerary.isActive ? 'Activa' : 'Inactiva' }}
+        </span>
+      </div>
+      <h2>{{ itinerary.name }}</h2>
+      <p class="product-label">{{ productName(itinerary.productId) }}</p>
+      <p class="card-description">{{ itinerary.description || 'Sin descripción disponible.' }}</p>
+      <button class="details-button" type="button" (click)="openEditor(itinerary)">Ver / editar itinerario</button>
+    </article>
+  </div>
+
+  <footer class="pagination" *ngIf="totalPages > 1">
+    <span>Página {{ currentPage }} de {{ totalPages }}</span>
+    <div>
+      <button type="button" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">Anterior</button>
+      <button type="button" [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">Siguiente</button>
+    </div>
+  </footer>
+</section>
+
+<div class="modal-backdrop" *ngIf="modal" (click)="closeDialog()">
+  <section class="itinerary-modal" role="dialog" aria-modal="true" aria-labelledby="itinerary-modal-title"
+    (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <div>
+        <p class="eyebrow">{{ modal === 'create' ? 'NUEVA VERSIÓN' : 'EDITOR DE ITINERARIO' }}</p>
+        <h2 id="itinerary-modal-title">{{ modal === 'create' ? 'Crear itinerario' : selectedDetail?.itinerary?.name || 'Itinerario' }}</h2>
+      </div>
+      <button class="modal-close" type="button" aria-label="Cerrar" [disabled]="isSaving" (click)="closeDialog()">×</button>
+    </header>
+    <div *ngIf="modalError" class="notice error-notice modal-notice" role="alert">{{ modalError }}</div>
+
+    <div *ngIf="isLoadingOptions && modal === 'create'" class="loading-state"><span class="spinner"></span> Cargando productos y destinos...</div>
+
+    <form *ngIf="modal === 'create' && !isLoadingOptions" #createForm="ngForm" class="itinerary-form"
+      (ngSubmit)="submitItinerary(createForm.valid === true)">
+      <label class="form-field"><span>Producto <b>*</b></span>
+        <select name="productId" [(ngModel)]="form.productId" required>
+          <option [ngValue]="null" disabled>Selecciona un producto</option>
+          <option *ngFor="let product of products" [ngValue]="product.id">{{ product.name }} · {{ product.code }}</option>
+        </select>
+      </label>
+      <label class="form-field"><span>Nombre de la versión <b>*</b></span><input name="name" [(ngModel)]="form.name" maxlength="200" required /></label>
+      <label class="form-field"><span>Descripción</span><textarea name="description" [(ngModel)]="form.description" maxlength="4000" rows="3"></textarea></label>
+      <p class="form-hint">La creación genera una nueva versión activa del itinerario.</p>
+      <footer class="modal-footer">
+        <button type="button" class="secondary-button" [disabled]="isSaving" (click)="closeDialog()">Cancelar</button>
+        <button type="submit" class="primary-button" [disabled]="isSaving">{{ isSaving ? 'Creando...' : 'Crear itinerario' }}</button>
+      </footer>
+    </form>
+
+    <div *ngIf="modal === 'editor'" class="itinerary-editor">
+      <div *ngIf="isLoadingDetail && !selectedDetail" class="loading-state"><span class="spinner"></span> Cargando itinerario y actividades...</div>
+      <ng-container *ngIf="selectedDetail as detail">
+        <div class="editor-toolbar">
+          <span class="version-label">VERSIÓN {{ detail.itinerary.version }}</span>
+          <div>
+            <button type="button" class="secondary-button" [disabled]="isSaving" (click)="duplicate()">Duplicar versión</button>
+            <button type="button" class="secondary-button" [disabled]="isSaving" (click)="setStatus()">
+              {{ detail.itinerary.isActive ? 'Desactivar' : 'Activar' }}
+            </button>
+          </div>
+        </div>
+        <section class="editor-section">
+          <h3>Datos de la versión</h3>
+          <div class="form-row">
+            <label class="form-field"><span>Producto</span>
+              <select name="editorProductId" [(ngModel)]="form.productId">
+                <option *ngFor="let product of products" [ngValue]="product.id">{{ product.name }}</option>
+              </select>
+            </label>
+            <label class="form-field"><span>Nombre</span><input name="editorName" [(ngModel)]="form.name" maxlength="200" /></label>
+          </div>
+          <label class="form-field"><span>Descripción</span><textarea name="editorDescription" [(ngModel)]="form.description" maxlength="4000" rows="2"></textarea></label>
+          <button type="button" class="secondary-button" [disabled]="isSaving || !form.name.trim()" (click)="saveItinerary()">Guardar datos</button>
+        </section>
+
+        <section class="days-section">
+          <header class="section-heading">
+            <div><h3>Días y actividades</h3><p>El orden se conserva al guardar la versión.</p></div>
+            <button type="button" class="primary-button small-button" (click)="beginDayEdit()">＋ Agregar día</button>
+          </header>
+
+          <form *ngIf="editingDayId === -1" #newDayForm="ngForm" class="inline-form"
+            (ngSubmit)="saveDay(newDayForm.valid === true)">
+            <h4>Nuevo día</h4>
+            <div class="form-row">
+              <label class="form-field"><span>Título <b>*</b></span><input name="newDayTitle" [(ngModel)]="dayForm.title" maxlength="200" required /></label>
+              <label class="form-field"><span>Descripción</span><input name="newDayDescription" [(ngModel)]="dayForm.description" maxlength="4000" /></label>
+            </div>
+            <div class="inline-actions"><button type="button" class="secondary-button" (click)="editingDayId = null">Cerrar</button><button type="submit" class="primary-button" [disabled]="isSaving">Guardar día</button></div>
+          </form>
+
+          <p *ngIf="detail.days.length === 0" class="empty-inline">Aún no se agregaron días a este itinerario.</p>
+          <article class="day-card" *ngFor="let day of detail.days; let i = index">
+            <header class="day-header">
+              <button type="button" class="day-toggle" [attr.aria-expanded]="expandedDayId === day.id"
+                (click)="expandedDayId = expandedDayId === day.id ? null : day.id">
+                <span class="day-number">Día {{ day.dayNumber }}</span><strong>{{ day.title }}</strong>
+                <span class="activity-count">{{ day.activities.length }} actividades</span>
+              </button>
+              <div class="day-actions">
+                <button type="button" aria-label="Mover día arriba" [disabled]="i === 0 || isSaving" (click)="moveDay(i, -1)">↑</button>
+                <button type="button" aria-label="Mover día abajo" [disabled]="i === detail.days.length - 1 || isSaving" (click)="moveDay(i, 1)">↓</button>
+                <button type="button" aria-label="Editar día" (click)="beginDayEdit(day)">✎</button>
+                <button type="button" aria-label="Eliminar día" class="danger-icon" [disabled]="isSaving" (click)="deleteDay(day)">×</button>
+              </div>
+            </header>
+            <div class="day-content" *ngIf="expandedDayId === day.id">
+              <p *ngIf="day.description" class="day-description">{{ day.description }}</p>
+              <form *ngIf="editingDayId === day.id" #editDayForm="ngForm" class="inline-form"
+                (ngSubmit)="saveDay(editDayForm.valid === true)">
+                <div class="form-row">
+                  <label class="form-field"><span>Título <b>*</b></span><input name="editDayTitle" [(ngModel)]="dayForm.title" maxlength="200" required /></label>
+                  <label class="form-field"><span>Descripción</span><input name="editDayDescription" [(ngModel)]="dayForm.description" maxlength="4000" /></label>
+                </div>
+                <div class="inline-actions"><button type="button" class="secondary-button" (click)="editingDayId = null">Cerrar</button><button type="submit" class="primary-button" [disabled]="isSaving">Guardar día</button></div>
+              </form>
+
+              <div class="activity-list">
+                <article class="activity-card" *ngFor="let activity of day.activities; let activityIndex = index">
+                  <div class="activity-order">{{ activityIndex + 1 }}</div>
+                  <div class="activity-copy">
+                    <strong>{{ activity.name }}</strong>
+                    <span>{{ activityTypeLabel(activity.activityType) }} · {{ destinationName(activity.destinationId) }}</span>
+                    <small *ngIf="activity.startTime || activity.durationMinutes">{{ activity.startTime || 'Sin horario' }}<span *ngIf="activity.endTime"> – {{ activity.endTime }}</span><span *ngIf="activity.durationMinutes"> · {{ activity.durationMinutes }} min</span></small>
+                  </div>
+                  <div class="activity-actions">
+                    <button type="button" aria-label="Mover actividad arriba" [disabled]="activityIndex === 0 || isSaving" (click)="moveActivity(day.id, activityIndex, -1)">↑</button>
+                    <button type="button" aria-label="Mover actividad abajo" [disabled]="activityIndex === day.activities.length - 1 || isSaving" (click)="moveActivity(day.id, activityIndex, 1)">↓</button>
+                    <button type="button" aria-label="Editar actividad" (click)="beginActivityEdit(day.id, activity)">✎</button>
+                    <button type="button" aria-label="Eliminar actividad" class="danger-icon" [disabled]="isSaving" (click)="deleteActivity(day.id, activity)">×</button>
+                  </div>
+                </article>
+              </div>
+              <button *ngIf="activeDayId !== day.id" type="button" class="add-activity-button" (click)="beginActivityEdit(day.id)">＋ Agregar actividad</button>
+              <form *ngIf="activeDayId === day.id" #activityFormRef="ngForm" class="inline-form activity-form"
+                (ngSubmit)="saveActivity(activityFormRef.valid === true)">
+                <h4>{{ editingActivityId === null ? 'Nueva actividad' : 'Editar actividad' }}</h4>
+                <div class="form-row">
+                  <label class="form-field"><span>Nombre <b>*</b></span><input name="activityName" [(ngModel)]="activityForm.name" maxlength="200" required /></label>
+                  <label class="form-field"><span>Destino <b>*</b></span>
+                    <select name="activityDestination" [(ngModel)]="activityForm.destinationId" required>
+                      <option [ngValue]="null" disabled>Selecciona un destino</option>
+                      <option *ngFor="let destination of destinations" [ngValue]="destination.id">{{ destination.name }} · {{ destination.province || destination.country }}</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="form-row three-columns">
+                  <label class="form-field"><span>Tipo</span><select name="activityType" [(ngModel)]="activityForm.activityType">
+                    <option *ngFor="let type of activityTypes" [ngValue]="type.value">{{ type.label }}</option>
+                  </select></label>
+                  <label class="form-field"><span>Inicio</span><input type="time" name="startTime" [(ngModel)]="activityForm.startTime" /></label>
+                  <label class="form-field"><span>Fin</span><input type="time" name="endTime" [(ngModel)]="activityForm.endTime" /></label>
+                </div>
+                <div class="form-row">
+                  <label class="form-field"><span>Duración (minutos)</span><input type="number" name="duration" [(ngModel)]="activityForm.durationMinutes" min="0" /></label>
+                  <label class="form-field"><span>Notas</span><input name="activityNotes" [(ngModel)]="activityForm.notes" maxlength="2000" /></label>
+                </div>
+                <label class="form-field"><span>Descripción</span><textarea name="activityDescription" [(ngModel)]="activityForm.description" maxlength="4000" rows="2"></textarea></label>
+                <div class="inline-actions"><button type="button" class="secondary-button" (click)="activeDayId = null; editingActivityId = null">Cerrar</button><button type="submit" class="primary-button" [disabled]="isSaving">Guardar actividad</button></div>
+              </form>
+            </div>
+          </article>
+        </section>
+        <footer class="modal-footer">
+          <span class="editor-hint">Los cambios de días y actividades generan una nueva versión de contenido.</span>
+          <button type="button" class="secondary-button" (click)="closeDialog()">Cerrar</button>
+        </footer>
+      </ng-container>
+    </div>
+  </section>
+</div>

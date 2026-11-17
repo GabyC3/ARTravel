@@ -23,6 +23,8 @@ public interface IProductService
         UpdateProductCommand command,
         CancellationToken cancellationToken);
 
+    Task DeleteAsync(int id, CancellationToken cancellationToken);
+
     Task<TourismProductResponse> SetStatusAsync(
         int id,
         bool isActive,

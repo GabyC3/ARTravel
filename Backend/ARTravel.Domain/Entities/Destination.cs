@@ -31,4 +31,6 @@ public sealed class Destination
     public DateTime CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+    public ICollection<DestinationImage> Images { get; } = new List<DestinationImage>();
 }

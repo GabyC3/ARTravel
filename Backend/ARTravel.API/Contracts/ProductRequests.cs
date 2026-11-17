@@ -22,7 +22,7 @@ public sealed class CreateProductRequest
     [Range(0, int.MaxValue)]
     public int DurationNights { get; init; }
 
-    [Range(typeof(decimal), "0", "9999999999.99")]
+    [DataType(DataType.Currency)]
     public decimal BasePrice { get; init; }
 
     [Required, StringLength(3, MinimumLength = 3)]
@@ -70,7 +70,7 @@ public sealed class UpdateProductRequest
     [Range(0, int.MaxValue)]
     public int DurationNights { get; init; }
 
-    [Range(typeof(decimal), "0", "9999999999.99")]
+    [DataType(DataType.Currency)]
     public decimal BasePrice { get; init; }
 
     [Required, StringLength(3, MinimumLength = 3)]
